@@ -7,6 +7,7 @@ Mô phỏng dịch địa chỉ logic (segment, offset) sang địa chỉ vật 
 segments.csv:  seg_id,base,limit,perm
 
 addresses.csv: seg_id,offset,access
+
 trace.csv:     seg,offset,access,base,limit,physical,status,reason
 
 - perm: gồm 3 ký tự, ví dụ R-X, RW-, R--
