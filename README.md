@@ -19,4 +19,5 @@ trace.csv:     seg,offset,access,base,limit,physical,status,reason
 1. Segment có tồn tại không
 2. Offset có nằm trong 0 ≤ offset < limit không
 3. Quyền truy cập có hợp lệ không
-
+## Cài đặt và chạy
+(sẽ bổ sung khi có code)
