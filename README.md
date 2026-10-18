@@ -5,6 +5,7 @@ Mô phỏng dịch địa chỉ logic (segment, offset) sang địa chỉ vật 
 ## Định dạng CSV (chốt từ tuần 1, không đổi cột)
 
 segments.csv:  seg_id,base,limit,perm
+
 addresses.csv: seg_id,offset,access
 trace.csv:     seg,offset,access,base,limit,physical,status,reason
 
