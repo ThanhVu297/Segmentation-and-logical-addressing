@@ -19,5 +19,12 @@ trace.csv:     seg,offset,access,base,limit,physical,status,reason
 1. Segment có tồn tại không
 2. Offset có nằm trong 0 ≤ offset < limit không
 3. Quyền truy cập có hợp lệ không
+## Thành viên
+- TV1 (nhóm trưởng): Họ tên, MSSV
+- TV2: Họ tên, MSSV
+- TV3: Họ tên, MSSV
+- TV4: Họ tên, MSSV
+- TV5: Họ tên, MSSV
+
 ## Cài đặt và chạy
 (sẽ bổ sung khi có code)
