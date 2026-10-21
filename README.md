@@ -24,9 +24,12 @@ addresses.csv: seg_id,offset,access
 trace.csv:     seg_id,offset,access,base,limit,physical,status,reason
 ```
 
-- perm: gồm 3 ký tự. Ký tự 1 là 'R' hoặc -, ký tự 2 là 'W' hoặc '-', ký tự 3 là 'X' hoặc '-'. Ví dụ: '-X', 'RW-', 'R--'.
-- access: chỉ nhận chữ hoa 'R' (đọc), 'W' (ghi) hoặc 'X' (thực thi).
-- Bộ nhớ vật lý mặc định: 5000 byte (địa chỉ 0–4999). Mỗi segment phải thỏa base + limit <= 5000, limit > 0, và các segment không chồng lấn.
+- `perm`: gồm 3 ký tự. Ký tự 1 là `R` hoặc `-`, ký tự 2 là `W` hoặc `-`, ký tự 3 là `X` hoặc `-`. Ví dụ: `R-X`, `RW-`, `R--`.
+- `access`: chỉ nhận chữ hoa `R` (đọc), `W` (ghi) hoặc `X` (thực thi).
+- Bộ nhớ vật lý mặc định: 5000 byte (địa chỉ 0–4999). Mỗi segment phải thỏa `base + limit <= 5000`, `limit > 0`, và các segment không chồng lấn.
+
+Đặc tả đầy đủ (ràng buộc từng cột, chính sách xử lý lỗi, danh sách file test): xem [docs/input-format.md](docs/input-format.md).
+
 
 Đặc tả đầy đủ (ràng buộc từng cột, chính sách xử lý lỗi, danh sách file test): xem [docs/input-format.md](docs/input-format.md).
 
