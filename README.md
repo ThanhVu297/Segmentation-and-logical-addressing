@@ -21,10 +21,10 @@ trace.csv:     seg,offset,access,base,limit,physical,status,reason
 3. Quyền truy cập có hợp lệ không
 ## Thành viên
 - TV1 (nhóm trưởng):Vũ Duy Thành
-- TV2: Họ tên, MSSV
-- TV3: Họ tên, MSSV
-- TV4: Họ tên, MSSV
-- TV5: Họ tên, MSSV
+- TV2: Phạm Uyên Trang
+- TV3: Trần Tường Nguyên
+- TV4: Trần Thị Ngọc Giàu
+- TV5: Nguyễn Thanh Dũng
 
 ## Cài đặt và chạy
 (sẽ bổ sung khi có code)
