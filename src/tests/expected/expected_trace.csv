@@ -1,0 +1,19 @@
+seg_id,offset,access,base,limit,physical,status,reason
+0,100,R,1000,400,1100,OK,Translation successful
+0,0,R,1000,400,1000,OK,Translation successful
+0,399,X,1000,400,1399,OK,Translation successful
+0,400,R,1000,400,,OFFSET_OUT_OF_RANGE,Offset 400 >= limit 400
+0,200,W,1000,400,,PROTECTION_FAULT,Access W not allowed by perm R-X
+1,0,R,2000,1000,2000,OK,Translation successful
+1,500,W,2000,1000,2500,OK,Translation successful
+1,999,R,2000,1000,2999,OK,Translation successful
+1,1000,R,2000,1000,,OFFSET_OUT_OF_RANGE,Offset 1000 >= limit 1000
+1,1200,R,2000,1000,,OFFSET_OUT_OF_RANGE,Offset 1200 >= limit 1000
+1,100,X,2000,1000,,PROTECTION_FAULT,Access X not allowed by perm RW-
+1,-1,R,2000,1000,,OFFSET_OUT_OF_RANGE,Offset -1 < 0
+2,10,R,3500,500,3510,OK,Translation successful
+2,10,W,3500,500,,PROTECTION_FAULT,Access W not allowed by perm R--
+2,499,R,3500,500,3999,OK,Translation successful
+2,500,R,3500,500,,OFFSET_OUT_OF_RANGE,Offset 500 >= limit 500
+3,10,R,,,,SEGMENT_FAULT,Segment 3 does not exist
+5,0,R,,,,SEGMENT_FAULT,Segment 5 does not exist

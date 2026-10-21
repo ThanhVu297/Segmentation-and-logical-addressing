@@ -1,0 +1,4 @@
+seg_id,offset,access,base,limit,physical,status,reason
+0,10,R,1000,400,1010,OK,Translation successful
+0,10,Z,,,,INVALID_INPUT,Invalid access value Z (expected R or W or X)
+0,10,r,,,,INVALID_INPUT,Invalid access value r (expected R or W or X)

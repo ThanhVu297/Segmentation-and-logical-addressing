@@ -1,0 +1,4 @@
+seg_id,offset,access,base,limit,physical,status,reason
+0,abc,R,,,,INVALID_INPUT,Offset abc is not an integer
+0,10,R,1000,400,1010,OK,Translation successful
+1,,R,,,,INVALID_INPUT,Offset is empty

@@ -1,0 +1,4 @@
+seg_id,offset,access,base,limit,physical,status,reason
+0,0,R,4600,400,4600,OK,Translation successful
+0,399,W,4600,400,4999,OK,Translation successful
+0,400,R,4600,400,,OFFSET_OUT_OF_RANGE,Offset 400 >= limit 400
