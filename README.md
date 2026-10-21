@@ -10,6 +10,7 @@
 Yêu cầu: Windows, Python [3.x], thư viện GUI: [Tkinter (có sẵn trong Python) / PyQt...].
 
 bash
+
 git clone https://github.com/ThanhVu297/Segmentation-and-logical-addressing.git
 
 cd Segmentation-and-logical-addressing
