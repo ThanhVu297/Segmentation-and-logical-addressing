@@ -31,7 +31,7 @@ trace.csv:     seg_id,offset,access,base,limit,physical,status,reason
 - `access`: chỉ nhận chữ hoa `R` (đọc), `W` (ghi) hoặc `X` (thực thi).
 - Bộ nhớ vật lý mặc định: 5000 byte (địa chỉ 0–4999). Mỗi segment phải thỏa `base + limit <= 5000`, `limit > 0`, và các segment không chồng lấn.
 
-Đặc tả đầy đủ (ràng buộc từng cột, chính sách xử lý lỗi, danh sách file test): xem [docs/input-format.md](docs/input-format.md).
+Đặc tả đầy đủ (ràng buộc từng cột, chính sách xử lý lỗi, danh sách file test): xem (https://docs.google.com/document/d/1-_8HaR0ZQqNwXhnGUSofY7TJcu7rtokn05q3U1j_u0o/edit?usp=sharing).
 
 
 
