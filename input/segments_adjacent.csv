@@ -1,3 +1,0 @@
-seg_id,base,limit,perm
-0,1000,400,R-X
-1,1400,400,RW-
