@@ -80,12 +80,18 @@ seg_id,base,limit,perm
 ## Cấu trúc thư mục
 src/
   core/        thuật toán dịch địa chỉ (không phụ thuộc GUI)
+  
   gui/         giao diện
+  
   tests/       kiểm thử, kèm expected/ (kết quả mong đợi tính tay)
+  
   main.py      điểm khởi chạy
 input/         CSV mẫu: segments.csv, addresses.csv, edge_cases/, error_cases/
+
 output/        trace.csv do ứng dụng xuất ra
+
 report/        báo cáo
+
 docs/          đặc tả dữ liệu và bằng chứng tiến độ hàng tuần (docs/progress/)
 ## Kiểm thử
 
