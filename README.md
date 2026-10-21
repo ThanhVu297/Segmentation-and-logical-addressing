@@ -31,7 +31,6 @@ trace.csv:     seg_id,offset,access,base,limit,physical,status,reason
 Đặc tả đầy đủ (ràng buộc từng cột, chính sách xử lý lỗi, danh sách file test): xem [docs/input-format.md](docs/input-format.md).
 
 
-Đặc tả đầy đủ (ràng buộc từng cột, chính sách xử lý lỗi, danh sách file test): xem [docs/input-format.md](docs/input-format.md).
 
 ## Thứ tự kiểm tra lỗi
 
