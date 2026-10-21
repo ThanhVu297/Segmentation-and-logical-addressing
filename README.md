@@ -21,11 +21,11 @@ python -m unittest discover -s src/tests -v
 
 ```
 ## Định dạng CSV (chốt từ tuần 1, không đổi cột)
-
+```
 segments.csv:  seg_id,base,limit,perm
 addresses.csv: seg_id,offset,access
 trace.csv:     seg_id,offset,access,base,limit,physical,status,reason
-
+```
 
 - `perm`: gồm 3 ký tự. Ký tự 1 là `R` hoặc `-`, ký tự 2 là `W` hoặc `-`, ký tự 3 là `X` hoặc `-`. Ví dụ: `R-X`, `RW-`, `R--`.
 - `access`: chỉ nhận chữ hoa `R` (đọc), `W` (ghi) hoặc `X` (thực thi).
