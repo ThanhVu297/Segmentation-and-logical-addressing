@@ -9,14 +9,10 @@
 
 Yêu cầu: Windows, Python [3.x], thư viện GUI: [Tkinter (có sẵn trong Python) / PyQt...].
 
-bash
-
+```bash
 git clone https://github.com/ThanhVu297/Segmentation-and-logical-addressing.git
-
 cd Segmentation-and-logical-addressing
-
-pip install -r requirements.txt   # bỏ qua nếu không có thư viện ngoài
-
+pip install -r requirements.txt # bỏ qua nếu không có thư viện ngoài
 python src/main.py
 
 Cách dùng: mở ứng dụng, chọn segments.csv và addresses.csv (có sẵn trong thư mục input/), bấm dịch, xem kết quả trên màn hình, xuất trace.csv vào thư mục output/.
