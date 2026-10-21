@@ -23,6 +23,7 @@ Cách dùng: mở ứng dụng, chọn segments.csv và addresses.csv (có sẵn
 Chạy kiểm thử:
 
 bash
+
 python -m unittest discover -s src/tests -v
 
 ## Định dạng CSV (chốt từ tuần 1, không đổi cột)
