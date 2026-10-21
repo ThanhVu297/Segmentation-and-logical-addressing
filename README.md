@@ -8,27 +8,21 @@
 ## Cài đặt và chạy
 
 Yêu cầu: Windows, Python [3.x], thư viện GUI: [Tkinter (có sẵn trong Python) / PyQt...].
-
 ```bash
 git clone https://github.com/ThanhVu297/Segmentation-and-logical-addressing.git
 cd Segmentation-and-logical-addressing
 pip install -r requirements.txt # bỏ qua nếu không có thư viện ngoài
 python src/main.py
-
+```
 Cách dùng: mở ứng dụng, chọn segments.csv và addresses.csv (có sẵn trong thư mục input/), bấm dịch, xem kết quả trên màn hình, xuất trace.csv vào thư mục output/.
 Chạy kiểm thử:
-
-bash
-
+```bash
 python -m unittest discover -s src/tests -v
-
 ## Định dạng CSV (chốt từ tuần 1, không đổi cột)
-
 segments.csv:  seg_id,base,limit,perm
-
 addresses.csv: seg_id,offset,access
-
 trace.csv:     seg_id,offset,access,base,limit,physical,status,reason
+```
 
 - perm: gồm 3 ký tự. Ký tự 1 là 'R' hoặc -, ký tự 2 là 'W' hoặc '-', ký tự 3 là 'X' hoặc '-'. Ví dụ: '-X', 'RW-', 'R--'.
 - access: chỉ nhận chữ hoa 'R' (đọc), 'W' (ghi) hoặc 'X' (thực thi).
