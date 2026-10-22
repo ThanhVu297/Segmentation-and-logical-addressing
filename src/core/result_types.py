@@ -45,3 +45,32 @@ class TranslationResult:
     status: Status = Status.OK
     reason: str = ""
     steps: List[Step] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class Segment:
+    seg_id: int
+    base: int
+    limit: int
+    perm: str  # ví dụ "R-X"
+
+
+class SegmentTable:
+    def __init__(self, mem_size: int = 5000):
+        self.mem_size = mem_size
+        self._segs = {}
+
+    def add(self, seg: Segment) -> None:
+        self._segs[seg.seg_id] = seg
+
+    def remove(self, seg_id: int) -> None:
+        self._segs.pop(seg_id, None)
+
+    def get(self, seg_id):
+        return self._segs.get(seg_id)  # None nếu không có
+
+    def __iter__(self):
+        return iter(self._segs.values())
+
+    def __len__(self):
+        return len(self._segs)
