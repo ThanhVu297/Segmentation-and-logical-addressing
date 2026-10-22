@@ -4,7 +4,7 @@ Không sửa file này nếu chưa báo nhóm: TV2, TV3, TV4, TV5 đều phụ t
 """
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import List, Optional
+from typing import Any, List, Optional
 
 # Các loại truy cập hợp lệ: R = đọc, W = ghi, X = thực thi
 ACCESS_TYPES = ("R", "W", "X")
@@ -36,9 +36,9 @@ class FaultResult:
 @dataclass
 class TranslationResult:
     """Kết quả của translate (TV2). Một dòng của trace.csv."""
-    seg_id: int
-    offset: int
-    access: str
+    seg_id: Any
+    offset: Any
+    access: Any
     base: Optional[int] = None      # None nếu segment không tồn tại
     limit: Optional[int] = None     # None nếu segment không tồn tại
     physical: Optional[int] = None  # None nếu có lỗi
