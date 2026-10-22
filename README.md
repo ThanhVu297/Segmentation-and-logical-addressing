@@ -5,6 +5,17 @@
 - TV3: Trần Tường Nguyên
 - TV4: Trần Thị Ngọc Giàu
 - TV5: Nguyễn Thanh Dũng
+
+## Kiểu dữ liệu dùng chung
+
+Nằm trong `src/core/result_types.py`, **chỉ TV1 được sửa**. Mọi người chỉ import, không tự định nghĩa lại:
+
+    from core.result_types import Status, TranslationResult, FaultResult, Segment
+
+Gồm: `Status` (5 trạng thái), `Step`, `FaultResult`, `TranslationResult`, `Segment`, `SegmentTable`.
+
+Muốn thêm hoặc đổi gì, nhắn TV1. Mỗi lần file này đổi sẽ có thông báo trong nhóm chat, mọi người `git pull` về rồi mới code tiếp.
+
 ## Cài đặt và chạy
 
 Yêu cầu: Windows, Python 3.10 trở lên, GUI dùng Tkinter (có sẵn trong Python).
