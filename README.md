@@ -17,8 +17,7 @@ python src/main.py
 Cách dùng: mở ứng dụng, chọn segments.csv và addresses.csv (có sẵn trong thư mục input/), bấm dịch, xem kết quả trên màn hình, xuất trace.csv vào thư mục output/.
 Chạy kiểm thử:
 ```bash
-python -m unittest discover -s src/tests -v
-
+python -m unittest discover -s src/tests -t src -v
 ```
 ## Định dạng CSV (chốt từ tuần 1, không đổi cột)
 ```
