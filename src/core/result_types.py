@@ -4,18 +4,19 @@ Không sửa file này nếu chưa báo nhóm: TV2, TV3, TV4, TV5 đều phụ t
 """
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import List, Optional
+from typing import Any, List, Optional
 
 # Các loại truy cập hợp lệ: R = đọc, W = ghi, X = thực thi
 ACCESS_TYPES = ("R", "W", "X")
 
 
 class Status(str, Enum):
-    """4 trạng thái duy nhất của một lần dịch địa chỉ."""
+    """5 trạng thái của một lần dịch địa chỉ."""
     OK = "OK"
-    SEGMENT_NOT_FOUND = "SEGMENT_NOT_FOUND"        # segment không tồn tại
-    OFFSET_OUT_OF_RANGE = "OFFSET_OUT_OF_RANGE"    # offset < 0 hoặc offset >= limit
-    PROTECTION_VIOLATION = "PROTECTION_VIOLATION"  # sai quyền R/W/X
+    SEGMENT_FAULT = "SEGMENT_FAULT"
+    OFFSET_OUT_OF_RANGE = "OFFSET_OUT_OF_RANGE"
+    PROTECTION_FAULT = "PROTECTION_FAULT"
+    INVALID_INPUT = "INVALID_INPUT"
 
 
 @dataclass
@@ -35,12 +36,41 @@ class FaultResult:
 @dataclass
 class TranslationResult:
     """Kết quả của translate (TV2). Một dòng của trace.csv."""
-    seg_id: int
-    offset: int
-    access: str
+    seg_id: Any
+    offset: Any
+    access: Any
     base: Optional[int] = None      # None nếu segment không tồn tại
     limit: Optional[int] = None     # None nếu segment không tồn tại
     physical: Optional[int] = None  # None nếu có lỗi
     status: Status = Status.OK
     reason: str = ""
     steps: List[Step] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class Segment:
+    seg_id: int
+    base: int
+    limit: int
+    perm: str  # ví dụ "R-X"
+
+
+class SegmentTable:
+    def __init__(self, mem_size: int = 5000):
+        self.mem_size = mem_size
+        self._segs = {}
+
+    def add(self, seg: Segment) -> None:
+        self._segs[seg.seg_id] = seg
+
+    def remove(self, seg_id: int) -> None:
+        self._segs.pop(seg_id, None)
+
+    def get(self, seg_id):
+        return self._segs.get(seg_id)  # None nếu không có
+
+    def __iter__(self):
+        return iter(self._segs.values())
+
+    def __len__(self):
+        return len(self._segs)
