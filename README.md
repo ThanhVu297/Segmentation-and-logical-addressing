@@ -7,7 +7,7 @@
 - TV5: Nguyễn Thanh Dũng
 ## Cài đặt và chạy
 
-Yêu cầu: Windows, Python [3.x], thư viện GUI: [Tkinter (có sẵn trong Python) / PyQt...].
+Yêu cầu: Windows, Python 3.10 trở lên, GUI dùng Tkinter (có sẵn trong Python).
 ```bash
 git clone https://github.com/ThanhVu297/Segmentation-and-logical-addressing.git
 cd Segmentation-and-logical-addressing
