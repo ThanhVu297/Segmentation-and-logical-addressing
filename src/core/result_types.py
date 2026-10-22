@@ -11,11 +11,12 @@ ACCESS_TYPES = ("R", "W", "X")
 
 
 class Status(str, Enum):
-    """4 trạng thái duy nhất của một lần dịch địa chỉ."""
+    """5 trạng thái của một lần dịch địa chỉ."""
     OK = "OK"
-    SEGMENT_NOT_FOUND = "SEGMENT_NOT_FOUND"        # segment không tồn tại
-    OFFSET_OUT_OF_RANGE = "OFFSET_OUT_OF_RANGE"    # offset < 0 hoặc offset >= limit
-    PROTECTION_VIOLATION = "PROTECTION_VIOLATION"  # sai quyền R/W/X
+    SEGMENT_FAULT = "SEGMENT_FAULT"
+    OFFSET_OUT_OF_RANGE = "OFFSET_OUT_OF_RANGE"
+    PROTECTION_FAULT = "PROTECTION_FAULT"
+    INVALID_INPUT = "INVALID_INPUT"
 
 
 @dataclass
