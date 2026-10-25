@@ -8,6 +8,3 @@ TV2:
 - Xây dựng chức năng chuyển đổi địa chỉ logic sang địa chỉ vật lý trong translator.py.
 - Cài đặt hàm translate() và translate_many().
 - Viết và chạy kiểm thử trong test_logic.py, các test đều PASSED.
-
-
-
