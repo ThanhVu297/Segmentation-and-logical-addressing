@@ -10,7 +10,7 @@
 
 Nằm trong `src/core/result_types.py`, **chỉ TV1 được sửa**. Mọi người chỉ import, không tự định nghĩa lại:
 
-    from core.result_types import Status, TranslationResult, FaultResult, Segment
+    from core.result_types import Status, TranslationResult, FaultResult, Segment, SegmentTable
 
 Gồm: `Status` (5 trạng thái), `Step`, `FaultResult`, `TranslationResult`, `Segment`, `SegmentTable`.
 
@@ -70,10 +70,9 @@ trace.csv:     seg_id,offset,access,base,limit,physical,status,reason
 
 `segments.csv`:
 
-```
-seg_id,base,limit,perm
-0,1000,400,R-X
-```
+| seg_id | base | limit | perm |
+| :---: | :---: | :---: | :---: |
+| 0 | 1000 | 400 | R-X |
 
 | addresses.csv | Kết quả | Giải thích |
 |---|---|---|
