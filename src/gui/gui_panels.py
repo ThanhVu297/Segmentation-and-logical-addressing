@@ -2,8 +2,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 import sys
 import os
-
-# Đảm bảo import được file result_types.py từ thư mục core
+#
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from core.result_types import Status, Step, TranslationResult
 
@@ -77,7 +76,7 @@ def create_gui_panels(parent, cb_open_csv=None, cb_translate=None, cb_next_step=
 # =======================================================
 if __name__ == "__main__":
     root = tk.Tk()
-    root.title("OS_MEM_12 - Test GUI Panels")
+    root.title("OS_MEM_12  -  Test GUI Panels")
     root.geometry("800x600")
 
 
