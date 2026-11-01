@@ -2,7 +2,6 @@ import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 import csv
 
-
 def create_gui_panels(parent):
     """
     Tạo toàn bộ giao diện GUI cho phần Quản lý phân đoạn và Địa chỉ logic của TV4.
@@ -50,7 +49,7 @@ def create_gui_panels(parent):
     btn_translate = ttk.Button(input_frame, text="Dịch địa chỉ")
     btn_translate.pack(side="left", padx=10)
 
-    # ==================== 3. BẢNG KẾT QUẢ TỪNG BƯỚC ====================
+    #3. BẢNG KẾT QUẢ TỪNG BƯỚC
     res_frame = ttk.LabelFrame(gui_frame, text="3. Bảng kết quả từng bước", padding=10)
     res_frame.pack(fill="both", expand=True, pady=5)
 
@@ -102,8 +101,6 @@ def display_translation_result(tree_res, mock_result):
 def show_error_dialog(message):
     """Hàm hiển thị hộp thoại báo lỗi trực quan với Icon cảnh báo khi nạp file CSV sai định dạng."""
     messagebox.showerror("Lỗi Dữ Liệu CSV", message)
-
-
 def validate_and_load_csv(filepath):
     """
     Hàm hỗ trợ nạp và kiểm tra tính hợp lệ của file CSV trước khi đưa lên GUI.
