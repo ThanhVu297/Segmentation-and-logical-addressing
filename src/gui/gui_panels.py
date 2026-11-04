@@ -1,132 +1,121 @@
 import tkinter as tk
-from tkinter import ttk, messagebox
-import sys
-import os
+from tkinter import ttk, messagebox, filedialog
+import csv
 
-# Đảm bảo import được file result_types.py từ thư mục core
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from core.result_types import Status, Step, TranslationResult
+def create_gui_panels(parent):
+    """
+    Tạo toàn bộ giao diện GUI cho phần Quản lý phân đoạn và Địa chỉ logic của TV4.
+    Bao gồm: Segment Table, Form nhập địa chỉ đơn lẻ, Bảng kết quả từng bước và các nút điều khiển.
+    """
+    gui_frame = ttk.Frame(parent, padding=10)
+    gui_frame.pack(fill="both", expand=True)
 
+    # ==================== 1. SEGMENT TABLE ====================
+    seg_frame = ttk.LabelFrame(gui_frame, text="1. Segment Table", padding=10)
+    seg_frame.pack(fill="x", pady=5)
 
-def create_gui_panels(parent, cb_open_csv=None, cb_translate=None, cb_next_step=None, cb_export=None):
-    """Hàm tạo giao diện, nhận parent (root/frame) và các callback từ main.py"""
-    main_frame = tk.Frame(parent)
+    btn_open_csv = ttk.Button(seg_frame, text="Mở file CSV")
+    btn_open_csv.pack(side="left", padx=5)
 
-    # --- 1. BẢNG SEGMENT TABLE ---
-    frame_top = tk.LabelFrame(main_frame, text="1. Segment Table", font=("Arial", 10, "bold"))
-    frame_top.pack(pady=10, padx=10, fill="x")
+    columns = ("seg_id", "base", "limit", "perm")
+    tree_seg = ttk.Treeview(seg_frame, columns=columns, show="headings", height=4)
+    tree_seg.heading("seg_id", text="SEG_ID")
+    tree_seg.heading("base", text="BASE")
+    tree_seg.heading("limit", text="LIMIT")
+    tree_seg.heading("perm", text="PERM")
 
-    tk.Button(frame_top, text="Mở file CSV", command=cb_open_csv).pack(side="left", padx=10, pady=5)
+    tree_seg.column("seg_id", width=80, anchor="center")
+    tree_seg.column("base", width=100, anchor="center")
+    tree_seg.column("limit", width=100, anchor="center")
+    tree_seg.column("perm", width=80, anchor="center")
+    tree_seg.pack(side="left", fill="x", expand=True, padx=5)
 
-    columns_seg = ("seg_id", "base", "limit", "perm")
-    tree_seg = ttk.Treeview(frame_top, columns=columns_seg, show="headings", height=5)
-    for col in columns_seg:
-        tree_seg.heading(col, text=col.upper())
-    tree_seg.pack(padx=10, pady=5, fill="x")
+    # ==================== 2. FORM NHẬP ĐỊA CHỈ ĐƠN LẺ ====================
+    input_frame = ttk.LabelFrame(gui_frame, text="2. Dịch địa chỉ đơn lẻ", padding=10)
+    input_frame.pack(fill="x", pady=5)
 
-    # --- 2. FORM NHẬP ĐỊA CHỈ (Sử dụng StringVar) ---
-    frame_mid = tk.LabelFrame(main_frame, text="2. Dịch địa chỉ đơn lẻ", font=("Arial", 10, "bold"))
-    frame_mid.pack(pady=10, padx=10, fill="x")
-
+    ttk.Label(input_frame, text="Segment:").pack(side="left", padx=2)
     seg_var = tk.StringVar()
+    ttk.Entry(input_frame, textvariable=seg_var, width=10).pack(side="left", padx=5)
+
+    ttk.Label(input_frame, text="Offset:").pack(side="left", padx=2)
     offset_var = tk.StringVar()
+    ttk.Entry(input_frame, textvariable=offset_var, width=10).pack(side="left", padx=5)
+
+    ttk.Label(input_frame, text="Access (R/W/X):").pack(side="left", padx=2)
     access_var = tk.StringVar()
+    ttk.Entry(input_frame, textvariable=access_var, width=10).pack(side="left", padx=5)
 
-    tk.Label(frame_mid, text="Segment:").grid(row=0, column=0, padx=5, pady=10)
-    tk.Entry(frame_mid, textvariable=seg_var, width=10).grid(row=0, column=1, padx=5)
+    btn_translate = ttk.Button(input_frame, text="Dịch địa chỉ")
+    btn_translate.pack(side="left", padx=10)
 
-    tk.Label(frame_mid, text="Offset:").grid(row=0, column=2, padx=5)
-    tk.Entry(frame_mid, textvariable=offset_var, width=10).grid(row=0, column=3, padx=5)
+    #3. BẢNG KẾT QUẢ TỪNG BƯỚC
+    res_frame = ttk.LabelFrame(gui_frame, text="3. Bảng kết quả từng bước", padding=10)
+    res_frame.pack(fill="both", expand=True, pady=5)
 
-    tk.Label(frame_mid, text="Access (R/W/X):").grid(row=0, column=4, padx=5)
-    tk.Entry(frame_mid, textvariable=access_var, width=10).grid(row=0, column=5, padx=5)
-
-    def on_translate():
-        if cb_translate:
-            cb_translate(seg_var.get(), offset_var.get(), access_var.get())
-
-    tk.Button(frame_mid, text="Dịch địa chỉ", bg="lightblue", command=on_translate).grid(row=0, column=6, padx=15)
-
-    # --- 3. BẢNG KẾT QUẢ TỪNG BƯỚC (Nhiệm vụ Tuần 3) ---
-    frame_bot = tk.LabelFrame(main_frame, text="3. Bảng kết quả từng bước", font=("Arial", 10, "bold"))
-    frame_bot.pack(pady=10, padx=10, fill="both", expand=True)
-
-    columns_res = ("step", "detail", "status")
-    tree_res = ttk.Treeview(frame_bot, columns=columns_res, show="headings", height=8)
+    res_columns = ("step", "detail", "status")
+    tree_res = ttk.Treeview(res_frame, columns=res_columns, show="headings", height=5)
     tree_res.heading("step", text="Bước")
     tree_res.heading("detail", text="Chi tiết")
     tree_res.heading("status", text="Trạng thái")
 
-    # Cấu hình highlight: Lỗi = đỏ nhạt, Hợp lệ = xanh lá nhạt
-    tree_res.tag_configure("error", background="#ffcccc")
-    tree_res.tag_configure("ok", background="#ccffcc")
-    tree_res.pack(padx=10, pady=5, fill="both", expand=True)
+    tree_res.column("step", width=120, anchor="center")
+    tree_res.column("detail", width=350, anchor="w")
+    tree_res.column("status", width=150, anchor="center")
+    tree_res.pack(fill="both", expand=True, pady=5)
 
-    # --- 4. CÁC NÚT ĐIỀU KHIỂN (Nhiệm vụ Tuần 3) ---
-    frame_ctrl = tk.Frame(main_frame)
-    frame_ctrl.pack(pady=10)
+    tree_res.tag_configure("ok", background="#e6ffed")
+    tree_res.tag_configure("error", background="#ffebe6")
 
-    tk.Button(frame_ctrl, text="Bước tiếp", width=15, command=cb_next_step).pack(side="left", padx=15)
-    tk.Button(frame_ctrl, text="Xuất kết quả", width=15, command=cb_export).pack(side="left", padx=15)
+    # ==================== 4. CÁC NÚT ĐIỀU KHIỂN ====================
+    ctrl_frame = ttk.Frame(gui_frame, padding=5)
+    ctrl_frame.pack(fill="x", pady=5)
 
-    return main_frame, tree_seg, tree_res
+    btn_next_step = ttk.Button(ctrl_frame, text="Bước tiếp")
+    btn_next_step.pack(side="left", expand=True, padx=5)
+
+    btn_export = ttk.Button(ctrl_frame, text="Xuất kết quả")
+    btn_export.pack(side="left", expand=True, padx=5)
+
+    return gui_frame, tree_seg, tree_res, seg_var, offset_var, access_var, btn_open_csv, btn_translate, btn_next_step, btn_export
 
 
-# --- HÀM XỬ LÝ MỚI CỦA TUẦN 3 ---
-def display_translation_result(tree_res, result: TranslationResult):
-    """Hàm đổ dữ liệu vào bảng và tự động highlight xanh/đỏ"""
-    # 1. Xóa sạch dữ liệu cũ mỗi lần dịch mới
+def display_translation_result(tree_res, mock_result):
+    """
+    Hàm xử lý và hiển thị kết quả dịch địa chỉ lên bảng tree_res,
+    tự động phân loại tag 'ok' (xanh) hoặc 'error' (đỏ) theo từng bước.
+    """
     for item in tree_res.get_children():
         tree_res.delete(item)
 
-    # 2. Duyệt qua từng bước (steps) và chèn vào bảng
-    for i, step in enumerate(result.steps):
-        step_num = i + 1
-        tag = "ok" if step.ok else "error"
-        status_text = "Hợp lệ" if step.ok else "Lỗi"
-        tree_res.insert("", "end", values=(step_num, step.description, status_text), tags=(tag,))
+    for idx, step in enumerate(mock_result.steps, start=1):
+        current_status = getattr(mock_result, "status", "OK")
+        tag = "ok" if "OK" in str(current_status) or idx == 1 else "error"
 
-    # 3. Thêm dòng Kết Luận cuối cùng
-    final_tag = "ok" if result.status == Status.OK else "error"
-    tree_res.insert("", "end", values=("KẾT LUẬN", result.reason, result.status.name), tags=(final_tag,))
+        tree_res.insert("", "end", values=(f"Bước {idx}", step.description, str(current_status)), tags=(tag,))
+
+    tree_res.insert("", "end", values=("KẾT LUẬN", mock_result.reason, str(mock_result.status)),
+                    tags=("error" if "OUT" in str(mock_result.status) or "ERROR" in str(mock_result.status) else "ok",))
 
 
-# =======================================================
-# KHU VỰC CHẠY THỬ (Chỉ chạy khi mở trực tiếp file này)
-# =======================================================
-if __name__ == "__main__":
-    root = tk.Tk()
-    root.title("OS_MEM_12 - Test GUI Panels Tuần 3")
-    root.geometry("800x600")
+def show_error_dialog(message):
+    """Hàm hiển thị hộp thoại báo lỗi trực quan với Icon cảnh báo khi nạp file CSV sai định dạng."""
+    messagebox.showerror("Lỗi Dữ Liệu CSV", message)
+def validate_and_load_csv(filepath):
+    """
+    Hàm hỗ trợ nạp và kiểm tra tính hợp lệ của file CSV trước khi đưa lên GUI.
+    Nếu file bị lỗi cấu trúc, kích hoạt ngay hộp thoại show_error_dialog.
+    """
+    try:
+        with open(filepath, 'r', encoding='utf-8') as f:
+            reader = csv.reader(f)
+            header = next(reader, None)
 
+            # Kiểm tra định dạng cơ bản: Phải có đủ 4 cột
+            if not header or len(header) < 4:
+                raise ValueError("File CSV không đủ 4 cột tiêu chuẩn (seg_id, base, limit, perm).")
 
-    def mock_open_csv(): messagebox.showinfo("Test", "Mở CSV")
-
-
-    def mock_translate(seg, offset, acc): messagebox.showinfo("Test", f"Dịch: {seg}, {offset}, {acc}")
-
-
-    def mock_next_step(): messagebox.showinfo("Test", "Đã bấm Bước tiếp!")
-
-
-    def mock_export(): messagebox.showinfo("Test", "Đã bấm Xuất kết quả!")
-
-
-    gui_frame, tree_seg, tree_res = create_gui_panels(
-        parent=root, cb_open_csv=mock_open_csv, cb_translate=mock_translate,
-        cb_next_step=mock_next_step, cb_export=mock_export
-    )
-    gui_frame.pack(fill="both", expand=True)
-
-    # Test hàm hiển thị của Tuần 3 với dữ liệu giả
-    step1 = Step(description="Tra bảng Segment ID = 0", ok=True)
-    step2 = Step(description="Kiểm tra Offset > Limit", ok=False)
-    mock_result = TranslationResult(
-        seg_id=0, offset=400, access="R",
-        status=Status.OFFSET_OUT_OF_RANGE, reason="Độ lệch vượt giới hạn", steps=[step1, step2]
-    )
-
-    # Gọi hàm xử lý vừa viết
-    display_translation_result(tree_res, mock_result)
-
-    root.mainloop()
+            return list(reader)
+    except Exception as e:
+        show_error_dialog(f"Không thể đọc file CSV!\nNguyên nhân: {str(e)}")
+        return None
