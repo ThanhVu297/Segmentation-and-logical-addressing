@@ -16,13 +16,12 @@ def check_permission(perm: str, access: str) -> bool:
 def check_fault(table, seg_id: int, offset: int, access: str) -> FaultResult:
     # THỨ TỰ 1: Segment không tồn tại -> SEGMENT_FAULT
     seg = table.get(seg_id)
-    if seg_id is None:
+    if seg is None:
         return FaultResult(
             status=Status.SEGMENT_FAULT, 
             reason=f"Segment {seg_id} không tồn tại trong bảng phân đoạn"
         )
     
-    seg = table[seg_id]
     limit = seg.limit if hasattr(seg, 'limit') else seg.get('limit')
     perm = seg.perm if hasattr(seg, 'perm') else seg.get('perm')
     
@@ -30,14 +29,14 @@ def check_fault(table, seg_id: int, offset: int, access: str) -> FaultResult:
     if offset < 0 or offset >= limit:
         return FaultResult(
             status=Status.OFFSET_OUT_OF_RANGE,
-            reason=f"Offset {offset} vượt quá giới hạn limit {seg.limit} của segment {seg_id}"
+            reason=f"Offset {offset} vượt quá giới hạn limit {limit} của segment {seg_id}"
         )
     
     # THỨ TỰ 3: Quyền truy cập không hợp lệ -> PROTECTION_FAULT
-    if not check_permission(segh.perm, access):
+    if not check_permission(perm, access):
         return FaultResult(
             status=Status.PROTECTION_FAULT, 
-            reason=f"Thao tác {access} không hợp lệ với quyền {seg.perm} của segment {seg_id}"
+            reason=f"Thao tác {access} không hợp lệ với quyền {perm} của segment {seg_id}"
         )
     
     # HỢP LỆ
