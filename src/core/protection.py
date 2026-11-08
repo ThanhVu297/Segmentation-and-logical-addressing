@@ -1,9 +1,10 @@
 from core.result_types import FaultResult, Status , SegmentTable
 
 def check_permission(perm: str, access: str) -> bool:
-    """
-    Kiểm tra vi phạm quyền dựa trên quy ước chuỗi perm 3 ký tự (Ví dụ: 'R-X', 'RW-')
-    """
+    """Kiểm tra vi phạm quyền dựa trên quy ước chuỗi perm 3 ký tự (Ví dụ: 'R-X', 'RW-')"""
+    if not isinstance(perm, str) or len(perm) != 3:
+        return False
+         
     if access == 'R' and perm[0] == 'R':
         return True
     if access == 'W' and perm[1] == 'W':
@@ -12,7 +13,7 @@ def check_permission(perm: str, access: str) -> bool:
         return True
     return False
 
-def check_fault(table: dict, seg_id: int, offset: int, access: str) -> FaultResult:
+def check_fault(table, seg_id: int, offset: int, access: str) -> FaultResult:
     # THỨ TỰ 1: Segment không tồn tại -> SEGMENT_FAULT
     seg = table.get(seg_id)
     if seg_id is None:
