@@ -1,19 +1,21 @@
+import os
 import tkinter as tk
-from tkinter import ttk, messagebox
-# Import cái ruột bà vừa làm ở Tuần 1-3
-from .gui_panels import create_gui_panels
+from tkinter import ttk, messagebox, filedialog
 
+# Import cái ruộtgui_panels của bạn
+from gui.gui_panels import create_gui_panels
 
-# Mốt thằng TV5 làm xong file memory_map.py thì mở comment dòng dưới ra
-# from .memory_map import create_memory_map_panel
+# Nhúng bản đồ bộ nhớ của TV5 vào
+from gui.memory_map import draw_memory_map
+from core.result_types import Status, SegmentTable
 
 class MainWindow(tk.Tk):
     def __init__(self, controller=None):
         super().__init__()
         self.title("Mô Phỏng Dịch Địa Chỉ Phân Đoạn - TV4 Ngọc Giàu")
-        self.geometry("1100x650")
+        self.geometry("1150x700")
 
-        # Cái này là của Tuần 5: Nhận app.py từ ngoài truyền vào
+        # Nhận app.py (controller) từ ngoài truyền vào
         self.controller = controller
 
         self.setup_menu()
@@ -21,7 +23,6 @@ class MainWindow(tk.Tk):
         self.bind_events()
 
     def setup_menu(self):
-        # Yêu cầu Tuần 4: Tạo menu
         menubar = tk.Menu(self)
         file_menu = tk.Menu(menubar, tearoff=0)
         file_menu.add_command(label="Mở file CSV", command=self.on_open_csv)
@@ -33,13 +34,12 @@ class MainWindow(tk.Tk):
         self.config(menu=menubar)
 
     def build_layout(self):
-        # Yêu cầu Tuần 4: Ghép gui_panels và chừa chỗ cho panel của TV5
         self.paned = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
         self.paned.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
-        # Nửa bên trái: Giao diện của bà
+        # Nửa bên trái: Giao diện gui_panels của bạn
         self.left_frame = ttk.Frame(self.paned)
-        self.paned.add(self.left_frame, weight=1)
+        self.paned.add(self.left_frame, weight=3)
 
         # Hứng lại mấy cái nút, bảng từ gui_panels.py để lát gắn sự kiện
         (self.gui_frame, self.tree_seg, self.tree_res,
@@ -47,30 +47,34 @@ class MainWindow(tk.Tk):
          self.btn_open_csv, self.btn_translate, self.btn_next_step,
          self.btn_export) = create_gui_panels(self.left_frame)
 
-        # Nửa bên phải: Khu vực của TV5 (Memory Map)
+        # Nửa bên phải: Khu vực Bản đồ bộ nhớ vật lý của TV5
         self.right_frame = ttk.Frame(self.paned, relief="sunken", borderwidth=1)
-        self.paned.add(self.right_frame, weight=1)
+        self.paned.add(self.right_frame, weight=2)
 
-        ttk.Label(self.right_frame, text="[Khu vực Bản đồ bộ nhớ của TV5]",
-                  background="#e0e0e0").pack(fill=tk.BOTH, expand=True)
-        # Mốt có code TV5 thì nhúng vào đây: create_memory_map_panel(self.right_frame, self.controller)
+        # Tạo Canvas trắng bên trong right_frame để TV5 vẽ bản đồ
+        self.canvas_map = tk.Canvas(self.right_frame, bg="white", highlightthickness=0)
+        self.canvas_map.pack(fill=tk.BOTH, expand=True, padx=2, pady=2)
 
     def bind_events(self):
-        # Gắn dây điện từ nút bấm sang các hàm ở dưới
         self.btn_open_csv.config(command=self.on_open_csv)
         self.btn_translate.config(command=self.on_translate)
         self.btn_next_step.config(command=self.on_next_step)
         self.btn_export.config(command=self.on_export)
 
-    # ==========================================
-    # YÊU CẦU TUẦN 5: GỌI HÀM TỪ CONTROLLER
-    # Không tự tính toán, có gì đẩy hết cho app.py lo
-    # ==========================================
+    def update_memory_map(self, segment_table, highlight_addr=None, fault_msg=None):
+        """Hàm gọi bản đồ bộ nhớ của TV5 vẽ lên Canvas"""
+        if segment_table:
+            mem_size = getattr(segment_table, 'mem_size', 5000)
+            draw_memory_map(self.canvas_map, segment_table, mem_size, highlight_addr, fault_msg)
+
     def on_open_csv(self):
         if self.controller:
             self.controller.handle_open_csv(self)
         else:
-            messagebox.showwarning("Cảnh báo", "Chưa nối với Controller đâu nha.")
+            # Fallback khi chạy test độc lập
+            filepath = filedialog.askopenfilename(filetypes=[("CSV Files", "*.csv")])
+            if filepath:
+                messagebox.showinfo("Thông báo", f"Đã chọn file: {filepath}")
 
     def on_translate(self):
         if self.controller:
@@ -89,6 +93,5 @@ class MainWindow(tk.Tk):
 
 
 if __name__ == "__main__":
-    # Để bà tự chạy test giao diện xem lên hình chưa (chưa có controller thật)
     app = MainWindow()
     app.mainloop()
