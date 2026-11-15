@@ -287,7 +287,7 @@ class SegmentationApp:
         )
         if not selected:
             return
-                try:
+        try:
             saved_path = write_trace_csv(self.results, selected)
         except (OSError, ValueError) as exc:
             messagebox.showerror(
