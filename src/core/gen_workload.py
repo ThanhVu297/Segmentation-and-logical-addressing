@@ -8,20 +8,21 @@ from __future__ import annotations
 
 import argparse
 import csv
+import math
 import random
 from pathlib import Path
 
 
 ACCESS_TYPES = ("R", "W", "X")
 ACCESS_INDEX = {"R": 0, "W": 1, "X": 2}
+MEMORY_SIZE = 5000
 
 
 def _load_segments(segments_path):
-    """Đọc segment table từ CSV; kiểm tra các trường cần cho việc sinh dữ liệu."""
+    """Đọc segment table từ CSV và xác thực các ràng buộc bộ nhớ."""
     segments = []
     with open(segments_path, newline="", encoding="utf-8-sig") as file:
         reader = csv.DictReader(file)
-        required = {"seg_id", "base", "limit", "perm"}
         if reader.fieldnames != ["seg_id", "base", "limit", "perm"]:
             raise ValueError(
                 "segments.csv phải có đúng các cột theo thứ tự: "
@@ -29,24 +30,51 @@ def _load_segments(segments_path):
             )
 
         seen_ids = set()
+        used_ranges = []
         for line_no, row in enumerate(reader, start=2):
             try:
                 seg_id = int(row["seg_id"])
+                base = int(row["base"])
                 limit = int(row["limit"])
                 perm = row["perm"].strip().upper()
             except (TypeError, ValueError):
                 raise ValueError(f"Dữ liệu không hợp lệ tại dòng {line_no}") from None
 
-            if seg_id < 0 or limit <= 0 or seg_id in seen_ids:
-                raise ValueError(f"seg_id/limit không hợp lệ tại dòng {line_no}")
+            if seg_id < 0 or base < 0 or limit <= 0 or seg_id in seen_ids:
+                raise ValueError(
+                    f"seg_id/base/limit không hợp lệ tại dòng {line_no}"
+                )
             if len(perm) != 3 or any(
                 char not in allowed
                 for char, allowed in zip(perm, ("R-", "W-", "X-"))
             ):
                 raise ValueError(f"perm không hợp lệ tại dòng {line_no}")
+            if base + limit > MEMORY_SIZE:
+                raise ValueError(
+                    f"segment tại dòng {line_no} vượt quá kích thước bộ nhớ "
+                    f"{MEMORY_SIZE}"
+                )
+
+            start, end = base, base + limit
+            overlaps = any(
+                existing_start < end and start < existing_end
+                for existing_start, existing_end in used_ranges
+            )
+            if overlaps:
+                raise ValueError(
+                    f"segment chồng lấn với segment khác tại dòng {line_no}"
+                )
 
             seen_ids.add(seg_id)
-            segments.append({"seg_id": seg_id, "limit": limit, "perm": perm})
+            used_ranges.append((start, end))
+            segments.append(
+                {
+                    "seg_id": seg_id,
+                    "base": base,
+                    "limit": limit,
+                    "perm": perm,
+                }
+            )
 
     if not segments:
         raise ValueError("segments.csv không có segment nào")
@@ -66,17 +94,19 @@ def generate_workload(
         segments_path: Đường dẫn đến segments.csv.
         output_path: Đường dẫn file addresses.csv cần tạo.
         count: Tổng số địa chỉ cần sinh (số nguyên dương).
-        error_rate: Tỷ lệ dòng lỗi trong khoảng 0.0 đến 1.0.
+        error_rate: Tỷ lệ dòng lỗi trong khoảng 0.0 đến 1.0; số dòng lỗi
+            được làm tròn đến số nguyên gần nhất (nửa làm tròn lên).
         seed: Seed tùy chọn để có thể tái tạo cùng một workload.
     """
-    if not isinstance(count, int) or count <= 0:
+    if type(count) is not int or count <= 0:
         raise ValueError("count phải là số nguyên > 0")
+    if not isinstance(error_rate, (int, float)) or not math.isfinite(error_rate):
+        raise ValueError("error_rate phải là số hữu hạn trong khoảng 0.0 đến 1.0")
     if not 0 <= error_rate <= 1:
         raise ValueError("error_rate phải nằm trong khoảng 0.0 đến 1.0")
 
     rng = random.Random(seed)
     segments = _load_segments(segments_path)
-    by_id = {segment["seg_id"]: segment for segment in segments}
 
     # Chỉ tạo địa chỉ hợp lệ ở nhóm OK: access phải được segment cho phép.
     valid_choices = [
@@ -86,22 +116,26 @@ def generate_workload(
         if segment["perm"][ACCESS_INDEX[access]] == access
     ]
     if not valid_choices:
-        raise ValueError("Không có segment nào cho phép R, W hoặc X để sinh địa chỉ hợp lệ")
+        raise ValueError(
+            "Không có segment nào cho phép R, W hoặc X để sinh địa chỉ hợp lệ"
+        )
 
-    missing_id = max(by_id) + 1
-    while missing_id in by_id:
-        missing_id += 1
+    missing_id = max(segment["seg_id"] for segment in segments) + 1
 
     # Các lỗi khả thi phụ thuộc vào segment table hiện tại.
     fault_types = ["SEGMENT_FAULT", "OFFSET_OUT_OF_RANGE"]
-    if any(
-        segment["perm"][ACCESS_INDEX[access]] != access
+    denied_choices = [
+        (segment, access)
         for segment in segments
         for access in ACCESS_TYPES
-    ):
+        if segment["perm"][ACCESS_INDEX[access]] != access
+    ]
+    if denied_choices:
         fault_types.append("PROTECTION_FAULT")
 
-    error_count = round(count * error_rate)
+    # Làm tròn nửa lên để số dòng lỗi ổn định, dễ dự đoán (không dùng
+    # round() vì round dùng quy tắc ties-to-even của Python).
+    error_count = int(count * error_rate + 0.5)
     rows = []
 
     for _ in range(count - error_count):
@@ -111,20 +145,15 @@ def generate_workload(
     for _ in range(error_count):
         fault = rng.choice(fault_types)
         if fault == "SEGMENT_FAULT":
-            # seg_id không tồn tại trong bảng.
             rows.append((missing_id, rng.randrange(0, 100), rng.choice(ACCESS_TYPES)))
         elif fault == "OFFSET_OUT_OF_RANGE":
             segment = rng.choice(segments)
             # offset == limit là trường hợp biên không hợp lệ.
-            rows.append((segment["seg_id"], segment["limit"], rng.choice(ACCESS_TYPES)))
+            rows.append(
+                (segment["seg_id"], segment["limit"], rng.choice(ACCESS_TYPES))
+            )
         else:
-            denied = [
-                (segment, access)
-                for segment in segments
-                for access in ACCESS_TYPES
-                if segment["perm"][ACCESS_INDEX[access]] != access
-            ]
-            segment, access = rng.choice(denied)
+            segment, access = rng.choice(denied_choices)
             rows.append((segment["seg_id"], rng.randrange(segment["limit"]), access))
 
     rng.shuffle(rows)
@@ -148,16 +177,23 @@ def main():
     parser = argparse.ArgumentParser(
         description="Sinh addresses.csv ngẫu nhiên với tỷ lệ lỗi tùy chỉnh."
     )
-    parser.add_argument("--segments", default="input/segments.csv",
-                        help="Đường dẫn segments.csv")
-    parser.add_argument("--output", default="input/addresses.csv",
-                        help="Đường dẫn addresses.csv đầu ra")
-    parser.add_argument("--count", type=int, default=100,
-                        help="Tổng số địa chỉ cần sinh (mặc định: 100)")
-    parser.add_argument("--error-rate", type=float, default=0.1,
-                        help="Tỷ lệ lỗi từ 0 đến 1 (mặc định: 0.1 = 10%%)")
-    parser.add_argument("--seed", type=int, default=None,
-                        help="Seed để tái tạo dữ liệu")
+    parser.add_argument(
+        "--segments", default="input/segments.csv", help="Đường dẫn segments.csv"
+    )
+    parser.add_argument(
+        "--output", default="input/addresses.csv", help="Đường dẫn addresses.csv đầu ra"
+    )
+    parser.add_argument(
+        "--count", type=int, default=100,
+        help="Tổng số địa chỉ cần sinh (mặc định: 100)",
+    )
+    parser.add_argument(
+        "--error-rate", type=float, default=0.1,
+        help="Tỷ lệ lỗi từ 0 đến 1; số dòng lỗi được làm tròn nửa lên (mặc định: 0.1)",
+    )
+    parser.add_argument(
+        "--seed", type=int, default=None, help="Seed để tái tạo dữ liệu"
+    )
     args = parser.parse_args()
 
     try:
