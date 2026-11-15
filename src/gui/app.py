@@ -1,10 +1,3 @@
-"""Application controller for the segmentation demo GUI.
-
-This module connects the Tkinter panels to CSV input/output and the core
-address translator. It deliberately does not define the command-line entry
-point in ``src/main.py``; that can import and call ``run_app`` once the team
-has agreed on the launcher requirements.
-"""
 from __future__ import annotations
 
 import os
