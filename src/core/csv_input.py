@@ -18,7 +18,7 @@ STATUS_INVALID_INPUT = "INVALID_INPUT"
 
 
 class ValidationError(Exception):
-
+    pass
 
 def _parse_int(text: str):
     text = text.strip()
