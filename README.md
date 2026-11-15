@@ -27,36 +27,52 @@ python -m pip install -r requirements.txt
 python src/main.py
 ```
 
-Khi ứng dụng mở, chọn `input/segments.csv` và `input/addresses.csv`, sau đó chọn dịch địa chỉ. Để lưu kết quả, chọn chức năng xuất CSV và lưu vào `output/trace.csv`.
+Chọn `input/segments.csv` và `input/addresses.csv`, sau đó chọn **Dịch toàn bộ addresses.csv** để xử lý danh sách. Bảng **Kết quả tổng hợp** hiển thị kết quả của toàn bộ địa chỉ; bảng từng bước dùng để xem trace của địa chỉ hiện tại. Chọn **Xuất kết quả** để tạo `output/trace.csv` và `output/trace_steps.csv` (hoặc các tên file tương ứng đã chọn).
 
-Chạy các kiểm thử tự động:
+Chạy kiểm thử:
 
 ```bash
 python -m compileall src
 python -m unittest discover -s src/tests -t src -v
 ```
 
-## Định dạng CSV (chốt từ tuần 1, không đổi cột)
+## Định dạng CSV
+
+Input gồm hai file; thứ tự cột phải đúng như dưới đây, tên cột phân biệt hoa/thường:
+
+```csv
+# segments.csv
+seg_id,base,limit,perm
+0,1000,400,R-X
+
+# addresses.csv
+seg_id,offset,access
+0,100,R
 ```
-segments.csv:  seg_id,base,limit,perm
-addresses.csv: seg_id,offset,access
-trace.csv:     seg_id,offset,access,base,limit,physical,status,reason
+
+- `seg_id`, `base`, `limit`, `offset`: số nguyên; `seg_id` và `base` không âm, `limit` lớn hơn 0.
+- `perm`: đúng 3 ký tự: vị trí 1 là `R` hoặc `-`, vị trí 2 là `W` hoặc `-`, vị trí 3 là `X` hoặc `-`; ví dụ `R-X`, `RW-`, `R--`.
+- `access`: `R` (đọc), `W` (ghi), hoặc `X` (thực thi). Chương trình chuẩn hóa chữ hoa trước khi kiểm tra.
+- Kích thước bộ nhớ vật lý được cố định trong chương trình là **5000 byte** (địa chỉ 0–4999); không phải tham số trong CSV. Vì vậy, để tái lập kết quả cần dùng đúng hai CSV input và cùng phiên bản/đặc tả chương trình. Mỗi segment phải thỏa `base + limit <= 5000`, và các segment không chồng lấn.
+
+`output/trace.csv` có một dòng cho mỗi địa chỉ, với các cột:
+
+```csv
+seg_id,offset,access,base,limit,physical,status,reason
 ```
 
-- `perm`: gồm 3 ký tự. Ký tự 1 là `R` hoặc `-`, ký tự 2 là `W` hoặc `-`, ký tự 3 là `X` hoặc `-`. Ví dụ: `R-X`, `RW-`, `R--`.
-- `access`: chỉ nhận chữ hoa `R` (đọc), `W` (ghi) hoặc `X` (thực thi).
-- Bộ nhớ vật lý mặc định: 5000 byte (địa chỉ 0–4999). Mỗi segment phải thỏa `base + limit <= 5000`, `limit > 0`, và các segment không chồng lấn.
+`output/trace_steps.csv` lưu trace chi tiết, một dòng cho mỗi bước. Các trường kết quả được lặp lại trên mỗi bước để có thể lọc/đối chiếu; địa chỉ không có bước thuật toán vẫn có một dòng với các trường bước để trống:
 
-Đặc tả đầy đủ (ràng buộc từng cột, chính sách xử lý lỗi, danh sách file test): xem https://docs.google.com/document/d/19Lc-90aaxNOjiAAXL8eQFG_M3rYb4pnTkkm4-1a4jMg/edit?usp=sharing
+```csv
+result_no,seg_id,offset,access,base,limit,physical,status,reason,step_no,step_description,step_ok
+```
 
+## Thứ tự kiểm tra và trạng thái
 
-
-## Thứ tự kiểm tra lỗi
-
-1. Segment không tồn tại: `SEGMENT_FAULT`
-2. Offset < 0 hoặc offset >= limit: `OFFSET_OUT_OF_RANGE`
-3. Quyền truy cập không hợp lệ (`R` cần `perm[0] = R`, `W` cần `perm[1] = W`, `X` cần `perm[2] = X`): `PROTECTION_FAULT`
-4. Qua cả ba bước: `OK`, `physical = base + offset`
+1. Segment không tồn tại: `SEGMENT_FAULT`.
+2. Offset < 0 hoặc offset >= limit: `OFFSET_OUT_OF_RANGE`.
+3. Quyền truy cập không được phép: `PROTECTION_FAULT`.
+4. Hợp lệ: `OK`, `physical = base + offset`.
 
 | status | Ý nghĩa |
 |---|---|
@@ -68,40 +84,28 @@ trace.csv:     seg_id,offset,access,base,limit,physical,status,reason
 
 ## Xử lý dữ liệu sai
 
-- `segments.csv` sai (rỗng, thiếu cột, không phải số, trùng `seg_id`, `perm` sai, vượt 5000 byte, chồng lấn): từ chối cả file, báo lỗi rõ ràng, không dịch địa chỉ.
-- `addresses.csv` rỗng hoặc thiếu cột: từ chối cả file.
-- Một dòng của `addresses.csv` sai định dạng: ghi dòng đó là `INVALID_INPUT` và tiếp tục các dòng còn lại.
+- `segments.csv` rỗng/sai cấu trúc, có giá trị không hợp lệ, ID trùng, quyền sai, segment vượt kích thước bộ nhớ hoặc chồng lấn: từ chối file và báo lỗi.
+- `addresses.csv` rỗng hoặc thiếu/sai tiêu đề: từ chối file.
+- Dòng địa chỉ không hợp lệ: đánh dấu `INVALID_INPUT`, giữ nguyên vị trí trong kết quả và tiếp tục xử lý các dòng khác.
 
-## Ví dụ
+## Ví dụ kết quả
 
-`segments.csv`:
+Với segment `0,1000,400,R-X`:
 
-| seg_id | base | limit | perm |
-| :---: | :---: | :---: | :---: |
-| 0 | 1000 | 400 | R-X |
-
-| addresses.csv | Kết quả | Giải thích |
+| Địa chỉ | Kết quả | Giải thích |
 |---|---|---|
 | `0,100,R` | `OK`, physical = 1100 | 1000 + 100 |
-| `0,400,R` | `OFFSET_OUT_OF_RANGE` | offset = limit |
-| `0,200,W` | `PROTECTION_FAULT` | `R-X` không có quyền ghi |
-| `3,10,R` | `SEGMENT_FAULT` | segment 3 không tồn tại |
+| `0,400,R` | `OFFSET_OUT_OF_RANGE` | Offset bằng limit |
+| `0,200,W` | `PROTECTION_FAULT` | Segment không cho phép ghi |
+| `3,10,R` | `SEGMENT_FAULT` | Segment 3 không tồn tại |
 
 ## Cấu trúc thư mục
 
 ```text
-src/
-  core/      thuật toán dịch địa chỉ (không phụ thuộc GUI)
-  gui/       giao diện
-  tests/     kiểm thử, kèm expected/ (kết quả mong đợi tính tay)
-  main.py    điểm khởi chạy
-input/       CSV mẫu: segments.csv, addresses.csv, edge_cases/, error_cases/
-output/      trace.csv do ứng dụng xuất ra
-report/      báo cáo
-docs/        đặc tả dữ liệu và bằng chứng tiến độ hàng tuần (docs/progress/)
+src/core/      thuật toán, đọc/ghi CSV và kiểm tra dữ liệu
+src/gui/       giao diện
+src/tests/     kiểm thử và expected results
+input/         CSV mẫu, edge_cases/ và error_cases/
+output/        trace.csv và trace_steps.csv
+report/        báo cáo
 ```
-## Kiểm thử
-
-- Đối chiếu kết quả thực tế (actual) với `src/tests/expected/*.csv` (oracle tính tay).
-- Dữ liệu biên trong `input/edge_cases/`, dữ liệu sai trong `input/error_cases/`.
-- Bảng kiểm thử, số liệu hiệu năng: xem trong báo cáo ([report/](report/)).
