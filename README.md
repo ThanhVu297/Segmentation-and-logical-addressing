@@ -32,6 +32,7 @@ Khi ứng dụng mở, chọn `input/segments.csv` và `input/addresses.csv`, sa
 Chạy các kiểm thử tự động:
 
 ```bash
+python -m compileall src
 python -m unittest discover -s src/tests -t src -v
 ```
 
