@@ -18,7 +18,8 @@ STATUS_INVALID_INPUT = "INVALID_INPUT"
 
 
 class ValidationError(Exception):
-
+"""Lỗi dữ liệu đầu vào CSV."""
+    pass
 
 def _parse_int(text: str):
     text = text.strip()

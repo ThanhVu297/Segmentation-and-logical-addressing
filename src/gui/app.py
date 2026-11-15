@@ -289,9 +289,21 @@ class SegmentationApp:
         if not selected:
             return
         try:
-            saved_path = write_trace_csv(self.results, selected)
-        except (OSError, ValueError) as exc:
-            messagebox.showerror("Không xuất được CSV", str(exc), parent=self.root)
+            segment_df = read_and_validate_segments(segments_name)
+            address_df = read_and_validate_addresses(addresses_name)
+            
+            if address_df.empty:
+                raise ValueError("addresses.csv không có dòng địa chỉ nào để xử lý.")
+
+            table = self._make_segment_table(segment_df)
+            issues = validate_table(table)
+            
+            if issues:
+                details = "\n".join(f"- {issue.message}" for issue in issues)
+                raise ValueError("Segment table không hợp lệ:\n" + details)
+
+        except (OSError, ValueError, TypeError) as exc:
+            messagebox.showerror("Không tải được dữ liệu", str(exc), parent=self.root)
             return
         messagebox.showinfo("Đã xuất kết quả", f"Đã ghi {len(self.results)} dòng:\n{saved_path}", parent=self.root)
 
