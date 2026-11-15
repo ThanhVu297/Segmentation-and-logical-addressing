@@ -4,14 +4,19 @@ from tkinter import ttk, messagebox
 import csv
 
 
-def create_gui_panels(parent):
+def create_gui_panels(
+        parent,
+       cb_open_csv=None,
+       cb_translate=None,
+       cb_next_step=None,
+       cb_export=None,
+):
     """
     Tao giao dien quan ly phan doan va dich dia chi logic.
     Gom Segment Table, form nhap dia chi va bang ket qua.
     """
 
     gui_frame = ttk.Frame(parent, padding=10)
-    gui_frame.pack(fill="both", expand=True)
 
     # 1. SEGMENT TABLE
     seg_frame = ttk.LabelFrame(
@@ -23,7 +28,8 @@ def create_gui_panels(parent):
 
     btn_open_csv = ttk.Button(
         seg_frame,
-        text="Mở file CSV"
+        text="Mở file CSV",
+        command=cb_open_csv,
     )
     btn_open_csv.pack(side="left", padx=5)
 
@@ -91,8 +97,11 @@ def create_gui_panels(parent):
 
     btn_translate = ttk.Button(
         input_frame,
-        text="Dịch địa chỉ"
-    )
+        text="Dịch địa chỉ",
+        command=lambda: cb_translate(
+            seg_var.get(), offset_var.get(), access_var.get()
+        ) if cb_translate else None,
+     )
     btn_translate.pack(side="left", padx=10)
 
     # 3. BANG KET QUA TUNG BUOC
@@ -139,30 +148,19 @@ def create_gui_panels(parent):
 
     btn_next_step = ttk.Button(
         ctrl_frame,
-        text="Bước tiếp"
+        text="Bước tiếp",
+        command=cb_next_step,
     )
     btn_next_step.pack(side="left", expand=True, padx=5)
 
     btn_export = ttk.Button(
         ctrl_frame,
-        text="Xuất kết quả"
+        text="Xuất kết quả",
+        command=cb_export,
     )
     btn_export.pack(side="left", expand=True, padx=5)
 
-    # Tra ve 10 thanh phan de gui.py su dung
-    return (
-        gui_frame,
-        tree_seg,
-        tree_res,
-        seg_var,
-        offset_var,
-        access_var,
-        btn_open_csv,
-        btn_translate,
-        btn_next_step,
-        btn_export
-    )
-
+    return gui_frame, tree_seg, tree_res
 
 # HIEN THI KET QUA DICH DIA CHI
 def display_translation_result(tree_res, result):
