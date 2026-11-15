@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import sys
 import tkinter as tk
 from pathlib import Path
@@ -17,8 +16,8 @@ from core.csv_input import (  # noqa: E402
     read_and_validate_addresses,
     read_and_validate_segments,
 )
-from core.csv_output import write_trace_csv  # noqa: E402
-from core.result_types import Segment, SegmentTable, Status, TranslationResult  # noqa: E402
+from core.csv_output import write_steps_csv, write_trace_csv  # noqa: E402
+from core.result_types import Segment, SegmentTable, Status, Step, TranslationResult  # noqa: E402
 from core.translator import translate  # noqa: E402
 from core.validator import validate_table  # noqa: E402
 from gui.gui_panels import create_gui_panels  # noqa: E402
@@ -39,8 +38,6 @@ class SegmentationApp:
         self.address_df = None
         self.segment_path: Path | None = None
         self.address_path: Path | None = None
-
-        # ``results`` is the set currently available for export/step-through.
         self.results: list[TranslationResult] = []
         self.current_result_index = 0
         self.visible_step_count = 0
@@ -62,6 +59,24 @@ class SegmentationApp:
         self.batch_button.pack(side="left")
         self.data_status = ttk.Label(controls, text="Chưa tải dữ liệu CSV")
         self.data_status.pack(side="left", padx=12)
+
+        summary_frame = ttk.LabelFrame(root, text="Kết quả tổng hợp", padding=6)
+        summary_frame.pack(fill="x", padx=10, pady=(0, 6))
+        summary_columns = ("seg_id", "offset", "access", "physical", "status", "reason")
+        self.tree_summary = ttk.Treeview(
+            summary_frame, columns=summary_columns, show="headings", height=5
+        )
+        for column, title, width in (
+            ("seg_id", "SEG_ID", 75),
+            ("offset", "OFFSET", 85),
+            ("access", "ACCESS", 75),
+            ("physical", "PHYSICAL", 90),
+            ("status", "STATUS", 190),
+            ("reason", "REASON", 430),
+        ):
+            self.tree_summary.heading(column, text=title)
+            self.tree_summary.column(column, width=width, anchor="w" if column == "reason" else "center")
+        self.tree_summary.pack(fill="x", expand=True)
 
         self.canvas = tk.Canvas(root, width=900, height=300, bg="white", highlightthickness=1)
         self.canvas.pack(fill="both", expand=True, padx=10, pady=(0, 10))
@@ -85,7 +100,6 @@ class SegmentationApp:
             return
 
         try:
-            # Read into local variables first, so a failed load keeps the old data.
             segment_df = read_and_validate_segments(segments_name)
             address_df = read_and_validate_addresses(addresses_name)
             if address_df.empty:
@@ -96,9 +110,7 @@ class SegmentationApp:
             if issues:
                 details = "\n".join(f"- {issue.message}" for issue in issues)
                 raise ValueError("Segment table không hợp lệ:\n" + details)
-        except (OSError, ValueError, Exception) as exc:
-            # csv_input raises ValidationError (a ValueError subclass in the
-            # current implementation); catch parser/library errors for a GUI message.
+        except Exception as exc:
             messagebox.showerror("Không tải được dữ liệu", str(exc), parent=self.root)
             return
 
@@ -112,6 +124,7 @@ class SegmentationApp:
         self.visible_step_count = 0
         self._refresh_segment_table()
         self._clear_result_table()
+        self._refresh_summary_table()
         self.data_status.configure(
             text=f"Đã tải {len(segment_df)} segment, {len(address_df)} địa chỉ"
         )
@@ -122,14 +135,10 @@ class SegmentationApp:
     def _make_segment_table(segment_df) -> SegmentTable:
         table = SegmentTable()
         for row in segment_df.itertuples(index=False):
-            table.add(
-                Segment(
-                    seg_id=int(row.seg_id),
-                    base=int(row.base),
-                    limit=int(row.limit),
-                    perm=str(row.perm),
-                )
-            )
+            table.add(Segment(
+                seg_id=int(row.seg_id), base=int(row.base),
+                limit=int(row.limit), perm=str(row.perm),
+            ))
         return table
 
     def _refresh_segment_table(self) -> None:
@@ -138,9 +147,7 @@ class SegmentationApp:
         if self.segment_df is None:
             return
         for row in self.segment_df.itertuples(index=False):
-            self.tree_seg.insert(
-                "", "end", values=(row.seg_id, row.base, row.limit, row.perm)
-            )
+            self.tree_seg.insert("", "end", values=(row.seg_id, row.base, row.limit, row.perm))
 
     def _clear_result_table(self) -> None:
         for item in self.tree_res.get_children():
@@ -151,9 +158,6 @@ class SegmentationApp:
         if len(self.segment_table) == 0:
             messagebox.showwarning("Chưa có dữ liệu", "Hãy tải segments.csv trước.", parent=self.root)
             return
-
-        # Pass malformed numeric values through to translate(), which returns
-        # the agreed INVALID_INPUT result instead of raising an exception.
         seg_id = self._parse_integer_or_original(seg_id_text)
         offset = self._parse_integer_or_original(offset_text)
         result = translate(self.segment_table, seg_id, offset, access_text.strip().upper())
@@ -175,31 +179,25 @@ class SegmentationApp:
         results: list[TranslationResult] = []
         for row in self.address_df.itertuples(index=False):
             if row.status == STATUS_INVALID_INPUT:
-                results.append(
-                    TranslationResult(
-                        seg_id=self._none_if_missing(row.seg_id),
-                        offset=self._none_if_missing(row.offset),
-                        access=self._none_if_missing(row.access),
-                        status=Status.INVALID_INPUT,
-                        reason=f"Dòng {row.line}: {row.error}",
-                    )
-                )
+                reason = f"Dòng {row.line}: {row.error}"
+                results.append(TranslationResult(
+                    seg_id=self._none_if_missing(row.seg_id),
+                    offset=self._none_if_missing(row.offset),
+                    access=self._none_if_missing(row.access),
+                    status=Status.INVALID_INPUT,
+                    reason=reason,
+                    steps=[Step(reason, ok=False)],
+                ))
             else:
-                results.append(
-                    translate(
-                        self.segment_table,
-                        int(row.seg_id),
-                        int(row.offset),
-                        str(row.access),
-                    )
-                )
+                results.append(translate(
+                    self.segment_table, int(row.seg_id), int(row.offset), str(row.access)
+                ))
 
         self._set_results(results)
         self.data_status.configure(text=f"Đã dịch {len(results)} địa chỉ")
 
     @staticmethod
     def _none_if_missing(value):
-        # Pandas nullable integer/string columns can expose NA/NaN values.
         try:
             if value is None or value != value:
                 return None
@@ -211,10 +209,22 @@ class SegmentationApp:
         self.results = results
         self.current_result_index = 0
         self.visible_step_count = 0
+        self._refresh_summary_table()
         if not results:
             self._clear_result_table()
             return
         self._render_current_result()
+
+    def _refresh_summary_table(self) -> None:
+        for item in self.tree_summary.get_children():
+            self.tree_summary.delete(item)
+        for result in self.results:
+            status = result.status.value if hasattr(result.status, "value") else result.status
+            self.tree_summary.insert("", "end", values=(
+                result.seg_id, result.offset, result.access,
+                result.physical if result.physical is not None else "",
+                status, result.reason or ("Dịch thành công" if status == "OK" else ""),
+            ))
 
     def show_next_step(self) -> None:
         """Reveal the next algorithm step, then advance to the next CSV row."""
@@ -235,15 +245,11 @@ class SegmentationApp:
     def _render_current_result(self) -> None:
         result = self.results[self.current_result_index]
         self._clear_result_table()
-
         for i, step in enumerate(result.steps[: self.visible_step_count], start=1):
             tag = "ok" if step.ok else "error"
             self.tree_res.insert(
                 "", "end", values=(i, step.description, "Hợp lệ" if step.ok else "Lỗi"), tags=(tag,)
             )
-
-        # Show the conclusion only after all steps are revealed (or immediately
-        # when the translator has no intermediate steps, such as malformed data).
         if self.visible_step_count >= len(result.steps):
             tag = "ok" if result.status == Status.OK else "error"
             self.tree_res.insert(
@@ -251,7 +257,6 @@ class SegmentationApp:
                 values=("KẾT LUẬN", result.reason or "Dịch thành công", result.status.value),
                 tags=(tag,),
             )
-
         if result.status == Status.OK:
             self.redraw_memory_map(highlight_addr=result.physical)
         else:
@@ -262,44 +267,34 @@ class SegmentationApp:
             return
         issues = validate_table(self.segment_table)
         draw_memory_map(
-            self.canvas,
-            self.segment_table,
-            self.segment_table.mem_size,
-            highlight_addr=highlight_addr,
-            fault_msg=fault_msg,
-            issues=issues,
+            self.canvas, self.segment_table, self.segment_table.mem_size,
+            highlight_addr=highlight_addr, fault_msg=fault_msg, issues=issues,
         )
 
     def export_trace(self) -> None:
-        """Write the current batch (or the last manual translation) to trace.csv."""
+        """Export summary and per-step trace CSV files."""
         if not self.results:
             messagebox.showinfo("Chưa có kết quả", "Chưa có kết quả nào để xuất.", parent=self.root)
             return
-
         default_path = PROJECT_ROOT / "output" / "trace.csv"
         selected = filedialog.asksaveasfilename(
-            parent=self.root,
-            title="Xuất trace.csv",
-            initialdir=str(default_path.parent),
-            initialfile=default_path.name,
-            defaultextension=".csv",
+            parent=self.root, title="Xuất trace.csv", initialdir=str(default_path.parent),
+            initialfile=default_path.name, defaultextension=".csv",
             filetypes=[("CSV files", "*.csv")],
         )
         if not selected:
             return
         try:
-            saved_path = write_trace_csv(self.results, selected)
+            summary_path = write_trace_csv(self.results, selected)
+            selected_path = Path(summary_path)
+            steps_path = selected_path.with_name(f"{selected_path.stem}_steps.csv")
+            write_steps_csv(self.results, steps_path)
         except (OSError, ValueError) as exc:
-            messagebox.showerror(
-                "Không xuất được CSV",
-                str(exc),
-                parent=self.root,
-            )
+            messagebox.showerror("Không xuất được CSV", str(exc), parent=self.root)
             return
-
         messagebox.showinfo(
             "Đã xuất kết quả",
-            f"Đã ghi {len(self.results)} dòng:\n{saved_path}",
+            f"Đã ghi {len(self.results)} kết quả:\n{summary_path}\nTrace từng bước:\n{steps_path}",
             parent=self.root,
         )
 
