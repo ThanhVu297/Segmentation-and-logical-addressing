@@ -6,7 +6,7 @@ from pathlib import Path
 
 
 # Thu muc goc cua project
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 # Cau truc cot CSV theo README
 CSV_COLUMNS = [
