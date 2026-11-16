@@ -13,9 +13,10 @@ from tests.helpers import (EXPECTED_DIR, INPUT_DIR, buggy_ignore_permission,
                            reference_translate, translate_without_access)
 
 try:  # TV1 dùng pandas trong csv_input
-    from core.csv_input import read_and_validate_segments
+    from core.csv_input import ValidationError, read_and_validate_segments
 except Exception:  # pragma: no cover - thiếu pandas
     read_and_validate_segments = None
+    ValidationError = None
 
 try:  # TV2 chưa chắc đã merge vào branch này
     from core.translator import translate as real_translate
@@ -157,16 +158,23 @@ class TestWithRealCsvInput(unittest.TestCase):
         self.assertEqual(validate_table(table), [])
 
     def test_validator_catches_what_csv_input_lets_through(self):
-        # csv_input chỉ chặn số âm/trùng ID/thiếu cột; các lỗi dưới đây
-        # phải do validate_table (TV5) bắt, đúng như README yêu cầu.
+        # Chỉ các lỗi mà csv_input KHÔNG chặn (chồng lấn, vượt bộ nhớ)
+        # mới phải do validate_table (TV5) bắt, đúng như README yêu cầu.
         for name in ("segments_overlap.csv", "segments_exceeds_memory.csv",
-                     "segments_exceeds_memory_by_one.csv",
-                     "segments_zero_limit.csv", "segments_invalid_perm_chars.csv",
-                     "segments_invalid_perm_length.csv"):
+                     "segments_exceeds_memory_by_one.csv"):
             with self.subTest(file=name):
                 df = read_and_validate_segments(
                     str(INPUT_DIR / "error_cases" / name))
                 self.assertNotEqual(validate_table(table_from_dataframe(df)), [])
+
+    def test_csv_input_rejects_invalid_values_before_validator(self):
+        # limit = 0 và perm sai định dạng đã bị csv_input từ chối ngay khi đọc.
+        for name in ("segments_zero_limit.csv", "segments_invalid_perm_chars.csv",
+                     "segments_invalid_perm_length.csv"):
+            with self.subTest(file=name):
+                with self.assertRaises(ValidationError):
+                    read_and_validate_segments(
+                        str(INPUT_DIR / "error_cases" / name))
 
 
 @unittest.skipIf(real_translate is None, "core.translator chưa có trong branch này")
