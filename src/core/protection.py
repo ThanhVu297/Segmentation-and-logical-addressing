@@ -1,43 +1,51 @@
-from core.result_types import FaultResult, Status , SegmentTable
+from .result_types import ACCESS_TYPES, FaultResult, Status
+
 
 def check_permission(perm: str, access: str) -> bool:
-    """Kiểm tra vi phạm quyền dựa trên quy ước chuỗi perm 3 ký tự (Ví dụ: 'R-X', 'RW-')"""
-    if not isinstance(perm, str) or len(perm) != 3:
+    """Kiểm tra quyền theo định dạng [R-][W-][X-]."""
+    if not isinstance(perm, str) or len(perm) != len(ACCESS_TYPES):
         return False
-         
-    if access == 'R' and perm[0] == 'R':
-        return True
-    if access == 'W' and perm[1] == 'W':
-        return True
-    if access == 'X' and perm[2] == 'X':
-        return True
-    return False
+    if not isinstance(access, str) or access not in ACCESS_TYPES:
+        return False
+    if any(char not in (expected, "-")
+           for char, expected in zip(perm, ACCESS_TYPES)):
+        return False
+
+    return perm[ACCESS_TYPES.index(access)] == access
+
 
 def check_fault(table, seg_id: int, offset: int, access: str) -> FaultResult:
-    # THỨ TỰ 1: Segment không tồn tại -> SEGMENT_FAULT
+    """Kiểm tra lỗi theo thứ tự: segment, offset, rồi quyền truy cập."""
     seg = table.get(seg_id)
     if seg is None:
         return FaultResult(
-            status=Status.SEGMENT_FAULT, 
-            reason=f"Segment {seg_id} không tồn tại trong bảng phân đoạn"
+            status=Status.SEGMENT_FAULT,
+            reason=f"Segment {seg_id} không tồn tại trong bảng phân đoạn",
         )
-    
-    limit = seg.limit if hasattr(seg, 'limit') else seg.get('limit')
-    perm = seg.perm if hasattr(seg, 'perm') else seg.get('perm')
-    
-    # THỨ TỰ 2: Độ lệch < 0 hoặc Độ lệch >= giới hạn -> OFFSET_OUT_OF_RANGE
+
+    if isinstance(seg, dict):
+        limit = seg.get("limit")
+        perm = seg.get("perm")
+    else:
+        limit = getattr(seg, "limit", None)
+        perm = getattr(seg, "perm", None)
+
     if offset < 0 or offset >= limit:
         return FaultResult(
             status=Status.OFFSET_OUT_OF_RANGE,
-            reason=f"Offset {offset} vượt quá giới hạn limit {limit} của segment {seg_id}"
+            reason=(
+                f"Offset {offset} vượt quá giới hạn limit {limit} "
+                f"của segment {seg_id}"
+            ),
         )
-    
-    # THỨ TỰ 3: Quyền truy cập không hợp lệ -> PROTECTION_FAULT
+
     if not check_permission(perm, access):
         return FaultResult(
-            status=Status.PROTECTION_FAULT, 
-            reason=f"Thao tác {access} không hợp lệ với quyền {perm} của segment {seg_id}"
+            status=Status.PROTECTION_FAULT,
+            reason=(
+                f"Thao tác {access} không hợp lệ với quyền {perm} "
+                f"của segment {seg_id}"
+            ),
         )
-    
-    # HỢP LỆ
+
     return FaultResult(status=Status.OK, reason="")
