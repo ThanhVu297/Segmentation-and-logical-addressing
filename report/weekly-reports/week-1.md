@@ -1,7 +1,8 @@
 # Báo cáo tiến độ Tuần 1
 TV1:
 - Khởi tạo Repository và thiết lập cấu trúc thư mục dự án.
-- Viết README.md ban đầu và đưa dữ liệu đầu vào (input/).
+- Viết README.md ban đầu quy ước và hướng dẫn
+- Thống nhất và tạo kiểu dữ liệu dùng chung với nhóm `src/core/result_types.py`
 - Tạo danh sách các Task/Issue để phân công công việc.
 - Mời các thành viên trong nhóm tham gia repo.
   
