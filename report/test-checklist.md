@@ -6,13 +6,13 @@
 
 | ID | Trường hợp kiểm thử | Dữ liệu / thao tác | Kết quả mong đợi | Kết quả thực tế | Trạng thái |
 |---|---|---|---|---|---|
-| T01 | Địa chỉ hợp lệ, quyền đọc được cấp | Segment `0`: base=1000, limit=400, perm=`R-X`; địa chỉ `(0,100,R)` | `OK`, physical=`1100` | Chưa chạy | ☐ Chưa kiểm thử |
-| T02 | Offset bằng 0 | `(0,0,R)` | `OK`, physical=`1000` | Chưa chạy | ☐ Chưa kiểm thử |
-| T03 | Offset lớn nhất còn hợp lệ | `(0,399,X)` | `OK`, physical=`1399` | Chưa chạy | ☐ Chưa kiểm thử |
-| T04 | Offset bằng limit | `(0,400,R)` | `OFFSET_OUT_OF_RANGE` | Chưa chạy | ☐ Chưa kiểm thử |
-| T05 | Offset âm | `(1,-1,R)` | `OFFSET_OUT_OF_RANGE` | Chưa chạy | ☐ Chưa kiểm thử |
-| T06 | Không đủ quyền truy cập | Segment `0` có perm=`R-X`; địa chỉ `(0,200,W)` | `PROTECTION_FAULT` | Chưa chạy | ☐ Chưa kiểm thử |
-| T07 | Segment không tồn tại | `(3,10,R)` | `SEGMENT_FAULT` | Chưa chạy | ☐ Chưa kiểm thử |
+| T01 | Địa chỉ hợp lệ, quyền đọc được cấp | Segment `0`: base=1000, limit=400, perm=`R-X`; địa chỉ `(0,100,R)` | `OK`, physical=`1100` | `OK`, physical=`1100` | PASS |
+| T02 | Offset bằng 0 | `(0,0,R)` | `OK`, physical=`1000` | `OK`, physical=`1000` | PASS |
+| T03 | Offset lớn nhất còn hợp lệ | `(0,399,X)` | `OK`, physical=`1399` | `OK`, physical=`1399` | PASS |
+| T04 | Offset bằng limit | `(0,400,R)` | `OFFSET_OUT_OF_RANGE` | `OFFSET_OUT_OF_RANGE` | PASS |
+| T05 | Offset âm | `(1,-1,R)` | `OFFSET_OUT_OF_RANGE` | `OFFSET_OUT_OF_RANGE` | PASS |
+| T06 | Không đủ quyền truy cập | Segment `0` có perm=`R-X`; địa chỉ `(0,200,W)` | `PROTECTION_FAULT` | `PROTECTION_FAULT` | PASS |
+| T07 | Segment không tồn tại | `(3,10,R)` | `SEGMENT_FAULT` | `SEGMENT_FAULT` | PASS |
 | T08 | Quyền truy cập sai định dạng | Thử access khác `R`, `W`, `X` | `INVALID_INPUT` | Chưa chạy | ☐ Chưa kiểm thử |
 
 ## B. Kiểm thử bảng segment và dữ liệu CSV
