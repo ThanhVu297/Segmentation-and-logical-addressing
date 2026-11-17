@@ -29,7 +29,24 @@ python src/main.py
 
 Chọn `input/segments.csv` và `input/addresses.csv`, sau đó chọn **Dịch toàn bộ addresses.csv** để xử lý danh sách. Bảng **Kết quả tổng hợp** hiển thị kết quả của toàn bộ địa chỉ; bảng từng bước dùng để xem trace của địa chỉ hiện tại. Chọn **Xuất kết quả** để tạo `output/trace.csv` và `output/trace_steps.csv` (hoặc các tên file tương ứng đã chọn).
 
-Chạy kiểm thử:
+### TV3: module `protection.py` và unit test
+
+`src/core/protection.py` kiểm tra địa chỉ theo thứ tự ưu tiên cố định và trả về lỗi đầu tiên gặp phải:
+
+1. **`SEGMENT_FAULT`** — `seg_id` không tồn tại trong segment table. Khi segment không tồn tại, không tiếp tục kiểm tra offset hoặc quyền.
+2. **`OFFSET_OUT_OF_RANGE`** — segment tồn tại nhưng `offset < 0` hoặc `offset >= limit`. Offset bằng `limit` cũng nằm ngoài phạm vi. Lỗi này được ưu tiên hơn lỗi quyền truy cập.
+3. **`PROTECTION_FAULT`** — segment tồn tại, offset hợp lệ nhưng quyền không cho phép thao tác. Quyền sai định dạng hoặc thao tác không hợp lệ cũng bị từ chối.
+4. **`OK`** — segment tồn tại, offset hợp lệ và quyền cho phép thao tác.
+
+Do đó, nếu có nhiều điều kiện lỗi cùng lúc thì chỉ trạng thái có ưu tiên cao nhất được trả về: segment không tồn tại cùng offset sai vẫn là `SEGMENT_FAULT`; offset ngoài phạm vi cùng thao tác bị cấm vẫn là `OFFSET_OUT_OF_RANGE`. Chỉ khi hai bước đầu hợp lệ, module mới xét quyền truy cập.
+
+Chạy riêng unit test của TV3 (`test_protection.py`) từ thư mục gốc dự án:
+
+```bash
+python -m unittest discover -s src/tests -t src -p "test_protection.py" -v
+```
+
+Chạy toàn bộ unit test của dự án:
 
 ```bash
 python -m compileall src
@@ -102,9 +119,9 @@ Với segment `0,1000,400,R-X`:
 ## Cấu trúc thư mục
 
 ```text
-src/core/      thuật toán, đọc/ghi CSV và kiểm tra dữ liệu
+src/core/      thuật toán, đọc/ghi CSV, kiểm tra dữ liệu và oracle đối chiếu độc lập
 src/gui/       giao diện
-src/tests/     kiểm thử và expected results
+src/tests/     kiểm thử (bao gồm TV3 protection/oracle) và expected results
 input/         CSV mẫu, edge_cases/ và error_cases/
 output/        trace.csv và trace_steps.csv
 report/        báo cáo
