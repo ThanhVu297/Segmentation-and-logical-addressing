@@ -3,6 +3,13 @@ TV1:
 - Điều chỉnh file `csv_input` để phù hợp với định dạng dữ liệu mà chương trình yêu cầu.
 - Duyệt và điều chỉnh các pr của các thành viên
 
+TV2: 
+- Tiếp tục hoàn thiện hàm translate().
+- Xây dựng hàm translate_many() để xử lý danh sách địa chỉ logic.
+- Bổ sung cơ chế kiểm tra giới hạn phân đoạn và quyền truy cập.
+- Xây dựng thông tin kết quả dịch và ghi lại từng bước xử lý (Step-by-step Trace).
+- Kiểm tra và điều chỉnh các trường hợp đầu vào khác nhau.
+
 TV3:
 - Hoàn thiện bản thật của hàm `check_fault()` trong `src/core/protection.py` kiểm tra tuần tự qua 3 tầng: `SEGMENT_FAULT` -> `OFFSET_OUT_OF_RANGE` -> `PROTECTION_FAULT` -> `OK`.
 - Cập nhật mục quy ước thứ tự ưu tiên kiểm tra lỗi của TV3 vào tài liệu `README.md` của dự án.
