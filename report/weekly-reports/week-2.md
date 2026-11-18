@@ -8,3 +8,9 @@ TV1:
 TV3:
 - Khởi tạo khung hàm `check_fault(table, seg_id, offset, access)` phiên bản stub trong `src/core/protection.py`.
 - Định nghĩa cấu trúc trả về `FaultResult` nhận diện 3 nhóm lỗi cơ bản: `SEGMENT_FAULT`, `OFFSET_OUT_OF_RANGE`, và `PROTECTION_FAULT` để các module khác (`translator.py`, `app.py`) tích hợp sớm.
+
+TV5:
+- Thiết kế hàm `validate_table(table, mem_size)` trong `src/core/validator.py`: mỗi segment chiếm khoảng nửa mở `[base, base + limit)`, phát hiện hai segment chồng lấp (overlap) và segment vượt kích thước bộ nhớ vật lý (5000 byte).
+- Xác định các ca kiểm thử cho validator: hai segment chồng lấp, hai segment chạm nhau tại biên (hợp lệ), segment vừa khít bộ nhớ, segment vượt bộ nhớ, bảng rỗng.
+- Tạo bản stub cho `draw_memory_map(canvas, table, mem_size)` trong `src/gui/memory_map.py` và phác thảo cách vẽ bản đồ bộ nhớ bằng Canvas (mỗi segment là một khối, đánh dấu địa chỉ vừa dịch, cảnh báo khi fault).
+- Lập kế hoạch đo hiệu năng trong `src/core/benchmark.py`: dịch 1.000 / 10.000 / 100.000 / 1.000.000 địa chỉ, đo thời gian bằng `perf_counter`, ghi kết quả vào bảng.
