@@ -72,6 +72,7 @@ def read_and_validate_segments(filepath: str) -> pd.DataFrame:
     errors: List[str] = []
     records = []
     seen_ids: Dict[int, int] = {}
+    +parsed_segments = []
 
     for line_no, fields in rows:
         if len(fields) != n_cols:
@@ -123,35 +124,36 @@ def read_and_validate_segments(filepath: str) -> pd.DataFrame:
             errors.append(f"Dòng {line_no}: perm '{perm}' sai định dạng (cần dạng như 'RW-', 'R-X', '---').")
             row_ok = False
 
-        for previous in parsed_segments:
-            overlap = (
-                base < previous["base"] + previous["limit"]
-                and previous["base"] < base + limit
-            )
-            if overlap:
-                errors.append(
-                    f"Dòng {line_no}: segment {seg_id} chồng lấn "
-                    f"với segment {previous['seg_id']} tại dòng "
-                    f"{previous['line']} "
-                    f"(vùng [{max(base, previous['base'])}, "
-                    f"{min(base + limit, previous['base'] + previous['limit'])})."
+        if base is not None and limit is not None:
+            for previous in parsed_segments:
+                overlap = (
+                    base < previous["base"] + previous["limit"]
+                    and previous["base"] < base + limit
                 )
-                row_ok = False
+                if overlap:
+                    errors.append(
+                        f"Dòng {line_no}: segment {seg_id} chồng lấn "
+                        f"với segment {previous['seg_id']} tại dòng "
+                        f"{previous['line']} "
+                        f"(vùng [{max(base, previous['base'])}, "
+                        f"{min(base + limit, previous['base'] + previous['limit'])})."
+                    )
+                    row_ok = False
                 
         if row_ok:
-                    record = {
-                        "seg_id": seg_id,
-                        "base": base,
-                        "limit": limit,
-                        "perm": perm,
-                    }
-                    records.append(record)
-                    parsed_segments.append({
-                        "seg_id": seg_id,
-                        "base": base,
-                        "limit": limit,
-                        "line": line_no,
-                    })
+            record = {
+                "seg_id": seg_id,
+                "base": base,
+                "limit": limit,
+                "perm": perm,
+            }
+            records.append(record)
+            parsed_segments.append({
+                "seg_id": seg_id,
+                "base": base,
+                "limit": limit,
+                "line": line_no,
+            })
 
     if errors:
         raise ValidationError(f"File '{filepath}' có {len(errors)} lỗi:\n  - " + "\n  - ".join(errors))
