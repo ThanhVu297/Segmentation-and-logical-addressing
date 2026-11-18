@@ -6,9 +6,11 @@ TV1:
 - Kiểm tra chồng lấp và giới hạn bộ nhớ thuộc phần `validator.py` của TV5.
 
 TV2:
-- Xây dựng chức năng chuyển đổi địa chỉ logic sang địa chỉ vật lý trong translator.py.
-- Cài đặt hàm translate() và translate_many().
-- Viết và chạy kiểm thử trong test_logic.py, các test đều PASSED.
+- Nghiên cứu thuật toán dịch địa chỉ logic sang địa chỉ vật lý.
+- Tìm hiểu các thành phần của bảng phân đoạn như Base, Limit và quyền truy cập.
+- Bắt đầu xây dựng file src/core/translator.py.
+- Xây dựng hàm translate(table, seg_id, offset, access) để thực hiện dịch địa chỉ.
+- Xác định các trường hợp địa chỉ hợp lệ và không hợp lệ.
 
 TV3:
 - Khởi tạo khung hàm `check_fault(table, seg_id, offset, access)` phiên bản stub trong `src/core/protection.py`.
