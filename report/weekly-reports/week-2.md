@@ -5,6 +5,11 @@ TV1:
 - Báo lỗi rõ ràng với dữ liệu không hợp lệ; đánh dấu dòng lỗi trong `addresses.csv` là `INVALID_INPUT` và tiếp tục xử lý.
 - Kiểm tra chồng lấp và giới hạn bộ nhớ thuộc phần `validator.py` của TV5.
 
+TV2:
+Xây dựng chức năng chuyển đổi địa chỉ logic sang địa chỉ vật lý trong translator.py.
+Cài đặt hàm translate() và translate_many().
+Viết và chạy kiểm thử trong test_logic.py, các test đều PASSED.
+
 TV3:
 - Khởi tạo khung hàm `check_fault(table, seg_id, offset, access)` phiên bản stub trong `src/core/protection.py`.
 - Định nghĩa cấu trúc trả về `FaultResult` nhận diện 3 nhóm lỗi cơ bản: `SEGMENT_FAULT`, `OFFSET_OUT_OF_RANGE`, và `PROTECTION_FAULT` để các module khác (`translator.py`, `app.py`) tích hợp sớm.
