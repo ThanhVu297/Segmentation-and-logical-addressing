@@ -6,3 +6,8 @@ TV1:
 TV3:
 - Xây dựng module đối chiếu độc lập `src/core/oracle.py` với hai hàm `reference_check_fault()` và `reference_check_permission()`.
 - Đảm bảo thuật toán Oracle không import từ `protection.py` nhằm phục vụ kiểm chứng chéo (Differential Testing).
+
+TV5:
+- Hoàn thiện `validator.py`: phát hiện segment chồng lấp, vượt bộ nhớ vật lý, sai khoảng và `perm` sai định dạng.
+- Xây dựng `memory_map.py`: vẽ bản đồ bộ nhớ bằng Canvas, đánh dấu địa chỉ vừa dịch và cảnh báo khi có fault.
+- Xây dựng bản đầu của `benchmark.py`: đo thời gian dịch 1.000 đến 1.000.000 địa chỉ và đối chiếu với oracle.
