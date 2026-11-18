@@ -14,6 +14,13 @@ TV3:
 - Khởi tạo khung hàm `check_fault(table, seg_id, offset, access)` phiên bản stub trong `src/core/protection.py`.
 - Định nghĩa cấu trúc trả về `FaultResult` nhận diện 3 nhóm lỗi cơ bản: `SEGMENT_FAULT`, `OFFSET_OUT_OF_RANGE`, và `PROTECTION_FAULT` để các module khác (`translator.py`, `app.py`) tích hợp sớm.
 
+TV4:
+- Tiếp tục phát triển giao diện trong `src/gui/gui_panels.py` bằng Tkinter.
+- Thiết kế bảng hiển thị thông tin phân đoạn (Segment Table).
+- Xây dựng biểu mẫu nhập địa chỉ đơn lẻ trên GUI.
+- Bố trí các trường nhập Segment ID, Offset và Access (R/W/X).
+- Sắp xếp bố cục giao diện để thuận tiện cho việc nhập và hiển thị thông tin phân đoạn.
+
 TV5:
 - Thiết kế hàm `validate_table(table, mem_size)` trong `src/core/validator.py`: mỗi segment chiếm khoảng nửa mở `[base, base + limit)`, phát hiện hai segment chồng lấp (overlap) và segment vượt kích thước bộ nhớ vật lý (5000 byte).
 - Xác định các ca kiểm thử cho validator: hai segment chồng lấp, hai segment chạm nhau tại biên (hợp lệ), segment vừa khít bộ nhớ, segment vượt bộ nhớ, bảng rỗng.
