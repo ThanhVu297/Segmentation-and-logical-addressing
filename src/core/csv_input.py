@@ -83,6 +83,15 @@ def read_and_validate_segments(filepath: str) -> pd.DataFrame:
         limit = _parse_int(fields[idx["limit"]])
         perm = fields[idx["perm"]].strip().upper()
 
+        if base is not None and limit is not None:
+            if base >= 0 and limit > 0:
+                end = base + limit
+                if end > 5000:
+                    errors.append(
+                        f"Dòng {line_no}: segment vượt kích thước bộ nhớ "
+                        f"(base={base}, limit={limit}, cần địa chỉ kết thúc <= 4999)."
+                    )
+                    
         row_ok = True
         if seg_id is None:
             errors.append(f"Dòng {line_no}: seg_id '{fields[idx['seg_id']]}' không phải số nguyên.")
@@ -125,7 +134,10 @@ def read_and_validate_segments(filepath: str) -> pd.DataFrame:
 
 def read_and_validate_addresses(filepath: str) -> pd.DataFrame:
     idx, n_cols, rows = _read_csv(filepath, ADDRESS_COLS)
-
+    if not rows:
+        raise ValidationError(
+            f"File '{filepath}' không có dòng địa chỉ nào để xử lý."
+        )
     records = []
     for line_no, fields in rows:
         rec = {"line": line_no, "seg_id": None, "offset": None, "access": None,
