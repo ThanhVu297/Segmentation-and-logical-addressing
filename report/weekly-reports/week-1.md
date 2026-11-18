@@ -7,9 +7,11 @@ TV1:
 - Mời các thành viên trong nhóm tham gia repo.
   
 TV2:
-- Xây dựng chức năng chuyển đổi địa chỉ logic sang địa chỉ vật lý trong translator.py.
-- Cài đặt hàm translate() và translate_many().
-- Viết và chạy kiểm thử trong test_logic.py, các test đều PASSED.
+- Tìm hiểu tổng quan về cơ chế phân đoạn (Segmentation) trong quản lý bộ nhớ của hệ điều hành.
+- Nghiên cứu cách chuyển đổi địa chỉ logic sang địa chỉ vật lý.
+- Đọc tài liệu yêu cầu và README của dự án trên GitHub.
+- Tìm hiểu cấu trúc thư mục và cách tổ chức mã nguồn của dự án.
+- Thống nhất nhiệm vụ và phân chia công việc giữa các thành viên trong nhóm.
 
 TV3:
 - Tham gia repository nhóm trên GitHub, đọc README.md và nắm quy ước kiểu dữ liệu dùng chung trong `src/core/result_types.py`.
