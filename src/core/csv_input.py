@@ -123,8 +123,35 @@ def read_and_validate_segments(filepath: str) -> pd.DataFrame:
             errors.append(f"Dòng {line_no}: perm '{perm}' sai định dạng (cần dạng như 'RW-', 'R-X', '---').")
             row_ok = False
 
+        for previous in parsed_segments:
+            overlap = (
+                base < previous["base"] + previous["limit"]
+                and previous["base"] < base + limit
+            )
+            if overlap:
+                errors.append(
+                    f"Dòng {line_no}: segment {seg_id} chồng lấn "
+                    f"với segment {previous['seg_id']} tại dòng "
+                    f"{previous['line']} "
+                    f"(vùng [{max(base, previous['base'])}, "
+                    f"{min(base + limit, previous['base'] + previous['limit'])})."
+                )
+                row_ok = False
+                
         if row_ok:
-            records.append({"seg_id": seg_id, "base": base, "limit": limit, "perm": perm})
+                    record = {
+                        "seg_id": seg_id,
+                        "base": base,
+                        "limit": limit,
+                        "perm": perm,
+                    }
+                    records.append(record)
+                    parsed_segments.append({
+                        "seg_id": seg_id,
+                        "base": base,
+                        "limit": limit,
+                        "line": line_no,
+                    })
 
     if errors:
         raise ValidationError(f"File '{filepath}' có {len(errors)} lỗi:\n  - " + "\n  - ".join(errors))
