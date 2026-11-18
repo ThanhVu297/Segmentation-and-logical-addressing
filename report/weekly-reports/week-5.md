@@ -3,6 +3,13 @@ TV1:
 - Tạo `src/main.py` làm điểm khởi chạy ứng dụng. Tệp này khởi tạo các thành phần cần thiết và mở giao diện GUI, giúp người dùng chạy chương trình từ một điểm thống nhất.
 - Tích hợp `src/gui/app.py` với controller trong `src/core/app.py`: GUI tiếp nhận thao tác và dữ liệu từ người dùng, gọi controller để thực hiện luồng xử lý, sau đó hiển thị kết quả hoặc thông báo lỗi.
 
+TV2:
+- Tìm hiểu yêu cầu của công cụ sinh dữ liệu ngẫu nhiên.
+- Xây dựng file src/core/gen_workload.py.
+- Tạo chức năng sinh danh sách địa chỉ logic và lưu vào file addresses.csv.
+- Bổ sung khả năng tùy chỉnh tỷ lệ dữ liệu lỗi.
+- Hỗ trợ tạo dữ liệu đầu vào phục vụ quá trình kiểm thử chương trình.
+
 TV3:
 - Xây dựng bộ kiểm thử đơn vị tại `src/tests/test_protection.py` bằng thư viện `unittest` với tổng cộng 23 test cases (vượt chỉ tiêu 17 ca):
   - 15 test cases trong lớp `TestCheckFault` kiểm tra các thao tác R/W/X, biên `offset = 0`, `offset = limit - 1`, `offset = limit`, lỗi chồng chéo đa tầng và đối chiếu Oracle.
