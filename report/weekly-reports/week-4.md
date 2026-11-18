@@ -3,6 +3,13 @@ TV1:
 - Tạo `src/core/app.py` làm controller điều phối luồng xử lý chính: nạp CSV → kiểm tra dữ liệu → dịch địa chỉ → tạo trace → xuất kết quả.
 - Thiết kế module độc lập với GUI để giao diện và các bài kiểm thử có thể cùng gọi, giúp tách biệt phần xử lý nghiệp vụ khỏi phần hiển thị.
 
+TV2:
+- Tìm hiểu thư viện csv trong Python.
+- Xây dựng file src/core/csv_output.py.
+- Thiết kế chức năng ghi kết quả dịch địa chỉ vào file CSV.
+- Bổ sung thông tin chi tiết về quá trình dịch địa chỉ vào file kết quả.
+- Xác định đường dẫn lưu kết quả tại output/trace.csv.
+
 TV3:
 - Xây dựng module đối chiếu độc lập `src/core/oracle.py` với hai hàm `reference_check_fault()` và `reference_check_permission()`.
 - Đảm bảo thuật toán Oracle không import từ `protection.py` nhằm phục vụ kiểm chứng chéo (Differential Testing).
