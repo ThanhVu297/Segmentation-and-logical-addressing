@@ -72,7 +72,7 @@ def read_and_validate_segments(filepath: str) -> pd.DataFrame:
     errors: List[str] = []
     records = []
     seen_ids: Dict[int, int] = {}
-    +parsed_segments = []
+    parsed_segments = []
 
     for line_no, fields in rows:
         if len(fields) != n_cols:
