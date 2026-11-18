@@ -1,5 +1,13 @@
 # Báo cáo tiến độ Tuần 7
 
+TV2:
+- Rà soát lại các file đã thực hiện trong phần công việc được phân công.
+- Kiểm tra cấu trúc mã nguồn và sự phù hợp với yêu cầu của dự án.
+- Tiếp tục chuẩn bị Unit Tests cho file translator.py, yêu cầu tối thiểu 5 trường hợp kiểm thử.
+- Tổng hợp nội dung thuật toán, Pseudocode, Flowchart và Trace để chuẩn bị báo cáo Q2.
+- Theo dõi việc cập nhật mã nguồn và tài liệu trên GitHub thông qua các branch và Pull Request.
+- Chuẩn bị nội dung giải thích chức năng và cách hoạt động của các phần đã thực hiện.
+
 TV3:
 - Hoàn thiện toàn bộ nội dung Báo cáo phần Q3 (Chiến lược kiểm thử, danh sách 23 Unit Test Cases và bảng đối chiếu Expected vs Actual Result).
 - Đưa tài liệu báo cáo Q3 vào thư mục `report/main-report/Q3_Testing_Report.md`.
