@@ -41,15 +41,14 @@ class TestCsvInput(unittest.TestCase):
             with self.assertRaises(ValidationError):
                 read_and_validate_addresses(path)
 
-    def test_addresses_with_header_but_no_rows_returns_empty_dataframe(self):
+    def test_addresses_with_header_but_no_rows_is_rejected(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             path = self.write_temp_csv(
                 temp_dir, "addresses.csv", "seg_id,offset,access\n"
             )
 
-            result = read_and_validate_addresses(path)
-
-        self.assertTrue(result.empty)
+            with self.assertRaises(ValidationError):
+                read_and_validate_addresses(path)
 
     def test_missing_address_column_is_rejected(self):
         with tempfile.TemporaryDirectory() as temp_dir:
