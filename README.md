@@ -23,7 +23,7 @@ Yêu cầu: Git và Python 3.10 trở lên. Ứng dụng sử dụng Tkinter đ�
 ```bash
 git clone https://github.com/ThanhVu297/Segmentation-and-logical-addressing.git
 cd Segmentation-and-logical-addressing
-python -m pip install -r requirements.txt
+python -m pip install pandas
 python src/main.py
 ```
 
