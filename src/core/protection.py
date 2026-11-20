@@ -1,39 +1,63 @@
-# src/core/protection.py
-# TV3: Trần Tường Nguyên - Nhiệm vụ Tuần 3-4
+from .result_types import ACCESS_TYPES, FaultResult, Status
 
-from core.result_types import FaultResult
 
-def check_permission(perm: str, access: str) -> bool:
-    """
-    Kiểm tra vi phạm quyền dựa trên quy ước chuỗi perm 3 ký tự (Ví dụ: 'R-X', 'RW-')
-    """
-    if access == 'R' and perm[0] == 'R':
-        return True
-    if access == 'W' and perm[1] == 'W':
-        return True
-    if access == 'X' and perm[2] == 'X':
-        return True
-    return False
+def check_permission(perm: object, access: object) -> bool:
+    """Kiểm tra quyền theo định dạng [R-][W-][X-]."""
+    if not isinstance(perm, str) or len(perm) != len(ACCESS_TYPES):
+        return False
+    if not isinstance(access, str) or access not in ACCESS_TYPES:
+        return False
+    if any(char not in (expected, "-")
+           for char, expected in zip(perm, ACCESS_TYPES)):
+        return False
 
-def check_fault(table: dict, seg_id: int, offset: int, access: str) -> FaultResult:
-    """
-    HÀM TUẦN 3-4: Nhận diện 3 loại lỗi hệ thống theo đúng thứ tự quy ước.
-    """
-    # THỨ TỰ 1: Segment không tồn tại -> SEGMENT_FAULT
-    if seg_id not in table:
-        return FaultResult(status="FAULT", reason="SEGMENT_FAULT")
-    
-    seg = table[seg_id]
-    limit = seg.limit if hasattr(seg, 'limit') else seg.get('limit')
-    perm = seg.perm if hasattr(seg, 'perm') else seg.get('perm')
-    
-    # THỨ TỰ 2: Độ lệch < 0 hoặc Độ lệch >= giới hạn -> OFFSET_OUT_OF_RANGE
+    return perm[ACCESS_TYPES.index(access)] == access
+
+
+def check_fault(table, seg_id: int, offset: int, access: str) -> FaultResult:
+    """Kiểm tra lỗi theo thứ tự: segment, offset, rồi quyền truy cập."""
+    if isinstance(offset, bool) or not isinstance(offset, int):
+        return FaultResult(
+            status=Status.INVALID_INPUT,
+            reason="Offset phải là số nguyên",
+        )
+
+    seg = table.get(seg_id)
+    if seg is None:
+        return FaultResult(
+            status=Status.SEGMENT_FAULT,
+            reason=f"Segment {seg_id} không tồn tại trong bảng phân đoạn",
+        )
+
+    if isinstance(seg, dict):
+        limit = seg.get("limit")
+        perm = seg.get("perm")
+    else:
+        limit = getattr(seg, "limit", None)
+        perm = getattr(seg, "perm", None)
+
+    if isinstance(limit, bool) or not isinstance(limit, int):
+        return FaultResult(
+            status=Status.INVALID_INPUT,
+            reason=f"Limit của segment {seg_id} phải là số nguyên",
+        )
+
     if offset < 0 or offset >= limit:
-        return FaultResult(status="FAULT", reason="OFFSET_OUT_OF_RANGE")
-    
-    # THỨ TỰ 3: Quyền truy cập không hợp lệ -> PROTECTION_FAULT
+        return FaultResult(
+            status=Status.OFFSET_OUT_OF_RANGE,
+            reason=(
+                f"Offset {offset} vượt quá giới hạn limit {limit} "
+                f"của segment {seg_id}"
+            ),
+        )
+
     if not check_permission(perm, access):
-        return FaultResult(status="FAULT", reason="PROTECTION_FAULT")
-    
-    # HỢP LỆ
-    return FaultResult(status="SUCCESS", reason=None)
+        return FaultResult(
+            status=Status.PROTECTION_FAULT,
+            reason=(
+                f"Thao tác {access} không hợp lệ với quyền {perm} "
+                f"của segment {seg_id}"
+            ),
+        )
+
+    return FaultResult(status=Status.OK, reason="")
