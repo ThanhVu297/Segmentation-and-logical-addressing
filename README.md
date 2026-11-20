@@ -9,9 +9,7 @@
 
 ## Mô hình bài toán & Đặc tả dữ liệu
 
-Tài liệu đặc tả chi tiết: https://docs.google.com/document/d/19Lc-90aaxNOjiAAXL8eQFG_M3rYb4pnTkkm4-1a4jMg/edit?usp=sharing
-
-## Cấu trúc thư mục dự án: [DATA_SPEC.md](DATA_SPEC.md)
+Tài liệu đặc tả chi tiết:[DATA_SPEC.md](DATA_SPEC.md)
 
 ```text
   ├── report/         # Báo cáo đồ án
