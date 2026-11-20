@@ -1,7 +1,7 @@
 from .result_types import ACCESS_TYPES, FaultResult, Status
 
 
-def check_permission(perm: str, access: str) -> bool:
+def check_permission(perm: object, access: object) -> bool:
     """Kiểm tra quyền theo định dạng [R-][W-][X-]."""
     if not isinstance(perm, str) or len(perm) != len(ACCESS_TYPES):
         return False
@@ -16,6 +16,12 @@ def check_permission(perm: str, access: str) -> bool:
 
 def check_fault(table, seg_id: int, offset: int, access: str) -> FaultResult:
     """Kiểm tra lỗi theo thứ tự: segment, offset, rồi quyền truy cập."""
+    if isinstance(offset, bool) or not isinstance(offset, int):
+        return FaultResult(
+            status=Status.INVALID_INPUT,
+            reason="Offset phải là số nguyên",
+        )
+
     seg = table.get(seg_id)
     if seg is None:
         return FaultResult(
@@ -29,6 +35,12 @@ def check_fault(table, seg_id: int, offset: int, access: str) -> FaultResult:
     else:
         limit = getattr(seg, "limit", None)
         perm = getattr(seg, "perm", None)
+
+    if isinstance(limit, bool) or not isinstance(limit, int):
+        return FaultResult(
+            status=Status.INVALID_INPUT,
+            reason=f"Limit của segment {seg_id} phải là số nguyên",
+        )
 
     if offset < 0 or offset >= limit:
         return FaultResult(
