@@ -1,51 +1,67 @@
-"""Reference oracle for segmentation protection checks.
+"""Independent reference implementation for segmentation protection checks."""
 
-This implementation intentionally does not import the production protection
-module so tests can compare its results against an independent implementation.
-"""
-from .result_types import ACCESS_TYPES, FaultResult, SegmentTable, Status
+from itertools import product
+
+from .result_types import FaultResult, SegmentTable, Status
+
+_ACCESS_POSITION = {"R": 0, "W": 1, "X": 2}
+_WELL_FORMED_PERMISSIONS = {
+    "".join(chars)
+    for chars in product(("R", "-"), ("W", "-"), ("X", "-"))
+}
 
 
 def reference_check_permission(perm: object, access: object) -> bool:
-    """Return whether a permission string grants the requested access."""
-    if not isinstance(perm, str) or len(perm) != 3:
-        return False
-    if not isinstance(access, str) or access not in ACCESS_TYPES:
+    """Return whether a well-formed permission string grants the access."""
+    if not isinstance(perm, str) or not isinstance(access, str):
         return False
 
-    for index, expected in enumerate(ACCESS_TYPES):
-        if perm[index] not in (expected, "-"):
-            return False
-
-    return perm[ACCESS_TYPES.index(access)] == access
+    position = _ACCESS_POSITION.get(access)
+    return (
+        position is not None
+        and perm in _WELL_FORMED_PERMISSIONS
+        and perm[position] == access
+    )
 
 
 def reference_check_fault(
     table: SegmentTable,
     seg_id: int,
-    offset: int,
-    access: str,
+    offset: object,
+    access: object,
 ) -> FaultResult:
-    """Return the first fault in segment, offset, and permission order."""
-    segment = table.get(seg_id)
-    if segment is None:
+    """Compute a fault result independently from the production checker."""
+    if isinstance(offset, bool) or not isinstance(offset, int):
+        return FaultResult(
+            status=Status.INVALID_INPUT,
+            reason="Offset phải là số nguyên",
+        )
+
+    record = table.get(seg_id)
+    if record is None:
         return FaultResult(
             status=Status.SEGMENT_FAULT,
             reason=f"Segment {seg_id} không tồn tại trong bảng phân đoạn",
         )
 
-    if isinstance(segment, dict):
-        limit = segment.get("limit")
-        permission = segment.get("perm")
+    if isinstance(record, dict):
+        bound = record.get("limit")
+        permission = record.get("perm")
     else:
-        limit = getattr(segment, "limit", None)
-        permission = getattr(segment, "perm", None)
+        bound = getattr(record, "limit", None)
+        permission = getattr(record, "perm", None)
 
-    if offset < 0 or offset >= limit:
+    if isinstance(bound, bool) or not isinstance(bound, int):
+        return FaultResult(
+            status=Status.INVALID_INPUT,
+            reason=f"Limit của segment {seg_id} phải là số nguyên",
+        )
+
+    if offset not in range(bound):
         return FaultResult(
             status=Status.OFFSET_OUT_OF_RANGE,
             reason=(
-                f"Offset {offset} vượt quá giới hạn limit {limit} "
+                f"Offset {offset} vượt quá giới hạn limit {bound} "
                 f"của segment {seg_id}"
             ),
         )
