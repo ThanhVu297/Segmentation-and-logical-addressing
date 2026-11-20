@@ -1,8 +1,22 @@
+import csv
 import unittest
+from pathlib import Path
 
 from core.oracle import reference_check_fault, reference_check_permission
 from core.protection import check_fault, check_permission
 from core.result_types import Segment, SegmentTable, Status
+
+EXPECTED_DIR = Path(__file__).resolve().parent / "expected"
+
+
+def expected_value(value):
+    return {
+        "none": None,
+        "string": "10",
+        "bool": True,
+        "float": 1.5,
+        "int": 1,
+    }[value]
 
 
 class TestCheckFault(unittest.TestCase):
@@ -47,6 +61,12 @@ class TestCheckFault(unittest.TestCase):
             check_fault(self.table, 99, 1, "R").status,
             Status.SEGMENT_FAULT,
         )
+
+    def test_fault_rejects_invalid_offset_before_segment_lookup(self):
+        actual = check_fault({}, 99, None, "R")
+        reference = reference_check_fault({}, 99, None, "R")
+        self.assertEqual(actual.status, Status.INVALID_INPUT)
+        self.assertEqual(actual, reference)
 
     def test_fault_denied_read(self):
         self.assertEqual(
@@ -98,6 +118,23 @@ class TestCheckFault(unittest.TestCase):
                     reference_check_fault(self.table, *args),
                 )
 
+    def test_fault_rejects_non_integer_offset_and_limit(self):
+        with (EXPECTED_DIR / "expected_protection_invalid_types.csv").open(
+            newline="", encoding="utf-8"
+        ) as file:
+            cases = list(csv.DictReader(file))
+
+        for case in cases:
+            offset = expected_value(case["offset"])
+            limit = expected_value(case["limit"])
+            table = {1: {"limit": limit, "perm": "RWX"}}
+            expected = Status[case["expected_status"]]
+            with self.subTest(case=case["case"]):
+                actual = check_fault(table, 1, offset, "R")
+                reference = reference_check_fault(table, 1, offset, "R")
+                self.assertEqual(actual.status, expected)
+                self.assertEqual(actual, reference)
+
 
 class TestCheckPermission(unittest.TestCase):
     def test_permission_grants_read(self):
@@ -121,6 +158,8 @@ class TestCheckPermission(unittest.TestCase):
     def test_permission_rejects_non_string_values(self):
         self.assertFalse(check_permission(None, "R"))
         self.assertFalse(check_permission("RWX", None))
+        self.assertFalse(check_permission(True, "R"))
+        self.assertFalse(check_permission("RWX", 1))
 
     def test_permission_matches_independent_reference_oracle(self):
         cases = (
@@ -129,6 +168,10 @@ class TestCheckPermission(unittest.TestCase):
             ("R-X", "X"),
             ("ABC", "R"),
             ("RWX", "Q"),
+            (None, "R"),
+            ("RWX", None),
+            (True, "R"),
+            ("RWX", 1),
         )
         for perm, access in cases:
             with self.subTest(perm=perm, access=access):
