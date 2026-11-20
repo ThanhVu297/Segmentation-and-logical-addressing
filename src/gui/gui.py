@@ -1,267 +1,534 @@
+"""
+gui.py - Cửa sổ chính MainWindow & Menu Bar (TV4 - Trần Thị Ngọc Giàu)
+- Giữ giao diện 5 panel, tô màu trạng thái, đi từng bước ('Bước tiếp ➔') và làm mới dữ liệu.
+- Không viết logic dịch địa chỉ trực tiếp trong GUI; mọi xử lý nạp/dịch/xuất đều gọi qua controller.
+"""
 
-import os
 import tkinter as tk
-from tkinter import ttk, messagebox, filedialog
+from tkinter import ttk, filedialog, messagebox
 
-# Import giao diện TV4
-from gui.gui_panels import create_gui_panels, validate_and_load_csv
+from gui.gui_panels import (
+    SegmentPanel,
+    LogicalAddressPanel,
+    StepTracePanel,
+    MemoryMapPanel,
+    BatchResultPanel,
+)
 
-# Import bản đồ bộ nhớ của TV5
-from gui.memory_map import draw_memory_map
 
-# Import kiểu dữ liệu chung của nhóm
-from core.result_types import Status, SegmentTable
+def _status_text(status_obj) -> str:
+    if hasattr(status_obj, "value"):
+        return str(status_obj.value)
+    return str(status_obj or "")
 
-# Import chức năng kiểm tra Segment của TV5
-from core.validator import validate_table
+
+def _extract_rows(source):
+    """Chuyển dữ liệu từ controller (DataFrame / SegmentTable / list / object) thành list[dict]."""
+    if source is None:
+        return []
+    if hasattr(source, "to_dict") and hasattr(source, "empty"):
+        return [] if source.empty else source.to_dict(orient="records")
+    if hasattr(source, "segments") and isinstance(source.segments, list):
+        return _extract_rows(source.segments)
+    if isinstance(source, (list, tuple)):
+        rows = []
+        for item in source:
+            if isinstance(item, dict):
+                rows.append(item)
+            elif hasattr(item, "__dict__"):
+                data = dict(item.__dict__)
+                if "perm" in data and "permission" not in data:
+                    data["permission"] = data["perm"]
+                rows.append(data)
+        return rows
+    return []
 
 
 class MainWindow(tk.Tk):
-
-    def __init__(self, controller=None):
+    def __init__(self, controller=None, mem_size: int = 5000):
         super().__init__()
+        if controller is None:
+            from core.app import SegmentationController
+            controller = SegmentationController(mem_size=mem_size)
 
-        self.title("Mô Phỏng Dịch Địa Chỉ Phân Đoạn - TV4 Ngọc Giàu")
-        self.geometry("1150x700")
-
-        # Nhận Controller từ bên ngoài
         self.controller = controller
+        self.mem_size = getattr(controller, "mem_size", mem_size)
 
-        self.setup_menu()
-        self.build_layout()
-        self.bind_events()
+        self._ui_segments = []
+        self._ui_addresses = []
+        self._raw_results = []
+        self._ui_results = []
+        self._ui_steps = []
+        self._step_index = -1
 
-    # ==================== MENU ====================
+        self._setup_style()
+        self.title("OS_MEM_12 - Segmentation và địa chỉ logic")
+        self.geometry("1280x760")
+        self.minsize(1024, 600)
 
-    def setup_menu(self):
+        self._build_menu()
+        self._build_top_bar()
+        self._build_layout()
+        self.refresh_ui()
+
+    def _setup_style(self):
+        style = ttk.Style(self)
+        style.theme_use("clam")
+        style.configure(
+            "Treeview",
+            background="#ffffff",
+            foreground="#000000",
+            fieldbackground="#ffffff",
+            font=("Segoe UI", 9),
+        )
+        style.map(
+            "Treeview",
+            background=[("selected", "#0d6efd")],
+            foreground=[("selected", "#ffffff")],
+        )
+
+    def _build_menu(self):
         menubar = tk.Menu(self)
 
         file_menu = tk.Menu(menubar, tearoff=0)
-
-        file_menu.add_command(
-            label="Mở file CSV",
-            command=self.on_open_csv
-        )
-
-        file_menu.add_command(
-            label="Xuất kết quả",
-            command=self.on_export
-        )
-
+        file_menu.add_command(label="Mở Segment CSV...", command=self._on_load_segment_csv)
+        file_menu.add_command(label="Mở Địa chỉ CSV...", command=self._on_load_address_csv)
         file_menu.add_separator()
+        file_menu.add_command(label="Xuất kết quả CSV...", command=self._on_export_csv)
+        file_menu.add_separator()
+        file_menu.add_command(label="Thoát", command=self.quit)
+        menubar.add_cascade(label="Tệp tin", menu=file_menu)
 
-        file_menu.add_command(
-            label="Thoát",
-            command=self.quit
-        )
+        action_menu = tk.Menu(menubar, tearoff=0)
+        action_menu.add_command(label="Dịch dòng đang chọn", command=lambda: self._on_translate_selected(0))
+        action_menu.add_command(label="Dịch tất cả", command=self._on_translate_all)
+        action_menu.add_command(label="Bước tiếp ➔", command=self._on_next_step)
+        action_menu.add_separator()
+        action_menu.add_command(label="Làm mới toàn bộ", command=self._on_reset_all)
+        menubar.add_cascade(label="Thao tác", menu=action_menu)
 
-        menubar.add_cascade(
-            label="Tệp tin",
-            menu=file_menu
-        )
+        help_menu = tk.Menu(menubar, tearoff=0)
+        help_menu.add_command(label="Hướng dẫn sử dụng", command=self._show_help)
+        help_menu.add_command(label="Giới thiệu (Nhóm OS_MEM_12)", command=self._show_about)
+        menubar.add_cascade(label="Trợ giúp", menu=help_menu)
 
         self.config(menu=menubar)
 
-    # ==================== BỐ CỤC GIAO DIỆN ====================
+    def _build_top_bar(self):
+        top_bar = tk.Frame(self, bg="#0d1b2a", padx=12, pady=6)
+        top_bar.pack(fill=tk.X, side=tk.TOP)
 
-    def build_layout(self):
+        tk.Label(
+            top_bar,
+            text="🟢 OS_MEM_12 - Segmentation và địa chỉ logic",
+            font=("Segoe UI", 10, "bold"),
+            fg="#ffffff",
+            bg="#0d1b2a",
+        ).pack(side=tk.LEFT)
 
-        self.paned = ttk.PanedWindow(
-            self,
-            orient=tk.HORIZONTAL
+        tk.Button(
+            top_bar,
+            text="Làm mới toàn bộ",
+            command=self._on_reset_all,
+            bg="#0d6efd",
+            fg="#ffffff",
+            activebackground="#0b5ed7",
+            activeforeground="#ffffff",
+            font=("Segoe UI", 8, "bold"),
+            bd=0,
+            cursor="hand2",
+            padx=8,
+            pady=2,
+        ).pack(side=tk.RIGHT, padx=(10, 0))
+
+        self.lbl_mem_info = tk.Label(
+            top_bar,
+            text=f"Bộ nhớ vật lý: 0 - {self.mem_size} byte",
+            font=("Segoe UI", 9),
+            fg="#e0e1dd",
+            bg="#0d1b2a",
         )
+        self.lbl_mem_info.pack(side=tk.RIGHT)
 
-        self.paned.pack(
-            fill=tk.BOTH,
-            expand=True,
-            padx=5,
-            pady=5
+    def _build_layout(self):
+        main_frame = ttk.Frame(self, padding=8)
+        main_frame.pack(fill=tk.BOTH, expand=True)
+
+        left_column = ttk.Frame(main_frame)
+        left_column.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 4))
+
+        right_column = ttk.Frame(main_frame)
+        right_column.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(4, 0))
+
+        self.segment_panel = SegmentPanel(
+            left_column,
+            on_add_segment=self._on_add_segment,
+            on_load_csv=self._on_load_segment_csv,
+            on_clear=self._on_clear_segments,
         )
+        self.segment_panel.pack(fill=tk.BOTH, expand=True, pady=(0, 4))
 
-        # Nửa bên trái: Giao diện TV4
-        self.left_frame = ttk.Frame(self.paned)
-
-        self.paned.add(
-            self.left_frame,
-            weight=3
+        self.address_panel = LogicalAddressPanel(
+            left_column,
+            on_add_address=self._on_add_address,
+            on_load_csv=self._on_load_address_csv,
+            on_clear=self._on_clear_addresses,
+            on_translate_selected=self._on_translate_selected,
+            on_translate_all=self._on_translate_all,
         )
+        self.address_panel.pack(fill=tk.BOTH, expand=True, pady=(0, 4))
 
-        # Nhận các thành phần từ gui_panels.py
-        (
-            self.gui_frame,
-            self.tree_seg,
-            self.tree_res,
-            self.seg_var,
-            self.offset_var,
-            self.access_var,
-            self.btn_open_csv,
-            self.btn_translate,
-            self.btn_next_step,
-            self.btn_export
-        ) = create_gui_panels(self.left_frame)
-
-        # Nửa bên phải: Bản đồ bộ nhớ của TV5
-        self.right_frame = ttk.Frame(
-            self.paned,
-            relief="sunken",
-            borderwidth=1
+        self.step_trace_panel = StepTracePanel(
+            left_column,
+            on_next_step=self._on_next_step,
         )
+        self.step_trace_panel.pack(fill=tk.BOTH, expand=True)
 
-        self.paned.add(
-            self.right_frame,
-            weight=2
+        self.memory_map_panel = MemoryMapPanel(right_column, mem_size=self.mem_size)
+        self.memory_map_panel.pack(fill=tk.BOTH, expand=True, pady=(0, 4))
+
+        self.batch_result_panel = BatchResultPanel(
+            right_column,
+            on_export_csv=self._on_export_csv,
         )
+        self.batch_result_panel.pack(fill=tk.BOTH, expand=True)
 
-        # Canvas để TV5 vẽ bản đồ bộ nhớ
-        self.canvas_map = tk.Canvas(
-            self.right_frame,
-            bg="white",
-            highlightthickness=0
+    # --- Lớp đồng bộ hiển thị với controller ---
+
+    def _controller_ready(self) -> bool:
+        return bool(self.controller and getattr(self.controller, "_loaded", False))
+
+    def _current_segments(self):
+        if self._controller_ready():
+            rows = _extract_rows(getattr(self.controller, "segment_table", None))
+            if rows:
+                return rows
+            df_rows = _extract_rows(getattr(self.controller, "segment_df", None))
+            if df_rows:
+                return df_rows
+        return self._ui_segments
+
+    def _current_addresses(self):
+        if self._controller_ready():
+            df_rows = _extract_rows(getattr(self.controller, "address_df", None))
+            if df_rows:
+                return df_rows
+        return self._ui_addresses
+
+    @staticmethod
+    def _to_int_if_possible(value):
+        try:
+            return int(str(value).strip())
+        except Exception:
+            return value
+
+    def _format_result_row(self, result_obj) -> dict:
+        sid = getattr(result_obj, "seg_id", "")
+        offset = getattr(result_obj, "offset", "")
+        access = getattr(result_obj, "access", "")
+        physical = getattr(result_obj, "physical", None)
+        status = _status_text(getattr(result_obj, "status", ""))
+        reason = getattr(result_obj, "reason", "") or ("Thành công" if status == "OK" else "")
+        return {
+            "seg_id": "" if sid is None else sid,
+            "offset": "" if offset is None else offset,
+            "access": "" if access is None else access,
+            "physical": "-" if physical is None else physical,
+            "status": status,
+            "reason": reason,
+        }
+
+    def _format_steps(self, result_obj) -> list[dict]:
+        raw_steps = getattr(result_obj, "steps", None) or []
+        formatted = []
+        for idx, st in enumerate(raw_steps, start=1):
+            desc = getattr(st, "description", "")
+            ok = bool(getattr(st, "ok", False))
+            formatted.append({
+                "step": idx,
+                "content": str(desc),
+                "status": "OK" if ok else "INVALID",
+            })
+        return formatted
+
+    def _sync_loaded_pair(self, seg_path: str, addr_path: str) -> bool:
+        if not (self.controller and hasattr(self.controller, "load_files")):
+            return False
+        try:
+            seg_df, addr_df = self.controller.load_files(seg_path, addr_path)
+            if addr_df is None or getattr(addr_df, "empty", False):
+                raise ValueError("File địa chỉ CSV không có dòng nào để xử lý.")
+            self._ui_segments = _extract_rows(seg_df)
+            self._ui_addresses = _extract_rows(addr_df)
+            self._raw_results.clear()
+            self._ui_results.clear()
+            self._ui_steps.clear()
+            self._step_index = -1
+            self.refresh_ui()
+            return True
+        except Exception as exc:
+            messagebox.showerror("Lỗi nạp dữ liệu CSV", str(exc), parent=self)
+            return False
+
+    # --- Sự kiện giao diện gọi controller ---
+
+    def _on_load_segment_csv(self):
+        seg_path = filedialog.askopenfilename(
+            parent=self,
+            title="Chọn file CSV bảng phân đoạn (segments.csv)",
+            filetypes=[("CSV Files", "*.csv"), ("All Files", "*.*")],
         )
+        if not seg_path:
+            return
 
-        self.canvas_map.pack(
-            fill=tk.BOTH,
-            expand=True,
-            padx=2,
-            pady=2
-        )
-
-    # ==================== GẮN SỰ KIỆN ====================
-
-    def bind_events(self):
-
-        self.btn_open_csv.config(
-            command=self.on_open_csv
-        )
-
-        self.btn_translate.config(
-            command=self.on_translate
-        )
-
-        self.btn_next_step.config(
-            command=self.on_next_step
-        )
-
-        self.btn_export.config(
-            command=self.on_export
-        )
-
-    # ==================== CẬP NHẬT BẢN ĐỒ BỘ NHỚ ====================
-
-    def update_memory_map(
-        self,
-        segment_table,
-        highlight_addr=None,
-        fault_msg=None
-    ):
-        """
-        Cập nhật bản đồ bộ nhớ vật lý của TV5.
-
-        segment_table: Bảng phân đoạn.
-        highlight_addr: Địa chỉ vật lý cần đánh dấu.
-        fault_msg: Thông báo lỗi nếu có.
-        """
-
-        if segment_table is not None:
-
-            mem_size = getattr(
-                segment_table,
-                "mem_size",
-                5000
+        if self.controller and hasattr(self.controller, "load_files"):
+            addr_path = filedialog.askopenfilename(
+                parent=self,
+                title="Chọn file CSV địa chỉ logic tương ứng (addresses.csv)",
+                filetypes=[("CSV Files", "*.csv"), ("All Files", "*.*")],
             )
+            if addr_path and self._sync_loaded_pair(seg_path, addr_path):
+                return
 
-            # Kiểm tra lỗi trong Segment Table
-            issues = validate_table(
-                segment_table,
-                mem_size
+        messagebox.showinfo(
+            "Thông báo",
+            "Vui lòng chọn đủ cả file CSV bảng phân đoạn và file CSV địa chỉ logic để controller nạp dữ liệu.",
+            parent=self,
+        )
+
+    def _on_load_address_csv(self):
+        addr_path = filedialog.askopenfilename(
+            parent=self,
+            title="Chọn file CSV địa chỉ logic (addresses.csv)",
+            filetypes=[("CSV Files", "*.csv"), ("All Files", "*.*")],
+        )
+        if not addr_path:
+            return
+
+        if self.controller and hasattr(self.controller, "load_files"):
+            seg_path = filedialog.askopenfilename(
+                parent=self,
+                title="Chọn file CSV bảng phân đoạn tương ứng (segments.csv)",
+                filetypes=[("CSV Files", "*.csv"), ("All Files", "*.*")],
             )
+            if seg_path and self._sync_loaded_pair(seg_path, addr_path):
+                return
 
-            # Vẽ bản đồ bộ nhớ
-            draw_memory_map(
-                self.canvas_map,
-                segment_table,
-                mem_size,
-                highlight_addr=highlight_addr,
-                fault_msg=fault_msg,
-                issues=issues
+        messagebox.showinfo(
+            "Thông báo",
+            "Vui lòng chọn đủ cả file CSV địa chỉ logic và file CSV bảng phân đoạn để controller nạp dữ liệu.",
+            parent=self,
+        )
+
+    def _on_add_segment(self, seg_id, base, limit, perm):
+        if not (self.controller and hasattr(self.controller, "segment_table")):
+            return
+        try:
+            from core.result_types import Segment
+            self.controller.segment_table.add(
+                Segment(
+                    seg_id=int(seg_id),
+                    base=int(base),
+                    limit=int(limit),
+                    perm=str(perm),
+                )
             )
+            self._ui_segments = _extract_rows(self.controller.segment_table)
+            setattr(self.controller, "_loaded", True)
+            self.refresh_ui()
+        except Exception as exc:
+            messagebox.showerror("Lỗi thêm Segment", str(exc), parent=self)
 
-    # ==================== MỞ FILE CSV ====================
+    def _on_add_address(self, seg_id, offset, access):
+        self._ui_addresses.append({
+            "segment_id": seg_id,
+            "seg_id": seg_id,
+            "offset": offset,
+            "access": access,
+        })
+        self.refresh_ui()
 
-    def on_open_csv(self):
-
+    def _on_clear_segments(self):
+        self._ui_segments.clear()
+        self._raw_results.clear()
+        self._ui_results.clear()
+        self._ui_steps.clear()
+        self._step_index = -1
         if self.controller:
+            try:
+                from core.result_types import SegmentTable
+                self.controller.segment_table = SegmentTable(mem_size=self.mem_size)
+                self.controller.segment_df = None
+                self.controller._loaded = False
+            except Exception:
+                pass
+        self.refresh_ui()
 
-            self.controller.handle_open_csv(self)
-
-        else:
-            filepath = filedialog.askopenfilename(
-                title="Chon file CSV",
-                filetypes=[("CSV Files", "*.csv")]
-            )
-
-            if filepath:
-                rows = validate_and_load_csv(filepath)
-
-                if rows is not None:
-                    # Xoa du lieu cu trong bang
-                    for item in self.tree_seg.get_children():
-                        self.tree_seg.delete(item)
-
-                    # Dua du lieu moi len Segment Table
-                    for row in rows:
-                        self.tree_seg.insert(
-                            "",
-                            "end",
-                            values=row[:4]
-                        )
-
-                    messagebox.showinfo(
-                        "Thong bao",
-                        "Da nap du lieu CSV thanh cong!"
-                    )
-    # ==================== DỊCH ĐỊA CHỈ ====================
-
-    def on_translate(self):
-
+    def _on_clear_addresses(self):
+        self._ui_addresses.clear()
+        self._raw_results.clear()
+        self._ui_results.clear()
+        self._ui_steps.clear()
+        self._step_index = -1
         if self.controller:
+            self.controller.address_df = None
+        self.refresh_ui()
 
-            seg = self.seg_var.get().strip()
-            offset = self.offset_var.get().strip()
-            access = self.access_var.get().strip()
-
-            self.controller.handle_translate(
-                seg,
-                offset,
-                access,
-                self
-            )
-        else:
-            messagebox.showerror(
-                "Lỗi kết nối",
-                "Controller chưa được khởi tạo!"
-            )
-
-    # ==================== BƯỚC TIẾP THEO ====================
-
-    def on_next_step(self):
-
+    def _on_reset_all(self):
+        self._ui_segments.clear()
+        self._ui_addresses.clear()
+        self._raw_results.clear()
+        self._ui_results.clear()
+        self._ui_steps.clear()
+        self._step_index = -1
         if self.controller:
+            try:
+                from core.result_types import SegmentTable
+                self.controller.segment_table = SegmentTable(mem_size=self.mem_size)
+                self.controller.segment_df = None
+                self.controller.address_df = None
+                self.controller._loaded = False
+            except Exception:
+                pass
+        self.refresh_ui()
 
-            self.controller.handle_next_step(self)
+    def _selected_address_index(self, default_idx: int, total: int) -> int:
+        try:
+            selected = self.address_panel.tree.selection()
+            if selected:
+                return self.address_panel.tree.index(selected[0])
+        except Exception:
+            pass
+        return default_idx if 0 <= default_idx < total else 0
 
-    # ==================== XUẤT KẾT QUẢ ====================
+    def _on_translate_selected(self, idx: int):
+        addresses = self._current_addresses()
+        if not addresses:
+            messagebox.showinfo("Thông báo", "Vui lòng thêm hoặc mở file CSV địa chỉ trước khi dịch!", parent=self)
+            return
 
-    def on_export(self):
+        if not (self.controller and hasattr(self.controller, "translate_one")):
+            messagebox.showwarning("Thiếu Controller", "Controller chưa hỗ trợ translate_one.", parent=self)
+            return
 
-        if self.controller:
+        target = addresses[self._selected_address_index(idx, len(addresses))]
+        sid = self._to_int_if_possible(target.get("segment_id", target.get("seg_id", target.get("Segment ID", ""))))
+        offset = self._to_int_if_possible(target.get("offset", target.get("Offset", 0)))
+        access = str(target.get("access", target.get("Access", "R"))).strip().upper()
 
-            self.controller.handle_export_results(self)
+        try:
+            res_obj = self.controller.translate_one(sid, offset, access)
+            self._ui_steps = self._format_steps(res_obj)
+            self._step_index = 0 if self._ui_steps else -1
+            if not self._raw_results:
+                self._raw_results = [res_obj]
+                self._ui_results = [self._format_result_row(res_obj)]
+            self.refresh_ui()
+        except Exception as exc:
+            messagebox.showerror("Lỗi dịch địa chỉ", str(exc), parent=self)
 
+    def _on_translate_all(self):
+        addresses = self._current_addresses()
+        if not addresses:
+            messagebox.showinfo("Thông báo", "Vui lòng thêm hoặc mở file CSV địa chỉ trước khi dịch!", parent=self)
+            return
 
-# ==================== CHẠY CHƯƠNG TRÌNH ====================
+        if not (self.controller and hasattr(self.controller, "translate_batch")):
+            messagebox.showwarning("Thiếu Controller", "Controller chưa hỗ trợ translate_batch.", parent=self)
+            return
+
+        try:
+            res_list = self.controller.translate_batch()
+            self._raw_results = list(res_list)
+            self._ui_results = [self._format_result_row(item) for item in res_list]
+            if res_list:
+                self._ui_steps = self._format_steps(res_list[0])
+                self._step_index = len(self._ui_steps) - 1
+            self.refresh_ui()
+        except Exception as exc:
+            messagebox.showerror("Lỗi dịch toàn bộ", str(exc), parent=self)
+
+    def _on_next_step(self):
+        if not self._current_addresses():
+            messagebox.showinfo("Thông báo", "Vui lòng nạp địa chỉ trước khi bấm Bước tiếp!", parent=self)
+            return
+
+        if not self._ui_steps:
+            self._on_translate_selected(0)
+            return
+
+        if self._step_index >= len(self._ui_steps) - 1:
+            messagebox.showinfo(
+                "Hoàn thành mô phỏng",
+                f"Đã thực hiện xong toàn bộ {len(self._ui_steps)} bước dịch cho địa chỉ này!\n"
+                "Chọn dòng địa chỉ khác hoặc bấm 'Làm mới toàn bộ' để mô phỏng địa chỉ khác.",
+                parent=self,
+            )
+            return
+
+        self._step_index += 1
+        self.refresh_ui()
+
+    def _on_export_csv(self):
+        if not self._raw_results:
+            messagebox.showinfo("Thông báo", "Chưa có dữ liệu kết quả để xuất CSV!", parent=self)
+            return
+
+        if not (self.controller and hasattr(self.controller, "export_trace")):
+            messagebox.showwarning("Thiếu Controller", "Controller chưa hỗ trợ export_trace.", parent=self)
+            return
+
+        filepath = filedialog.asksaveasfilename(
+            parent=self,
+            title="Xuất kết quả CSV",
+            defaultextension=".csv",
+            filetypes=[("CSV Files", "*.csv")],
+        )
+        if not filepath:
+            return
+
+        try:
+            summary_path, steps_path = self.controller.export_trace(self._raw_results, filepath)
+            messagebox.showinfo(
+                "Thành công",
+                f"Đã xuất kết quả:\n{summary_path}\nTrace từng bước:\n{steps_path}",
+                parent=self,
+            )
+        except Exception as exc:
+            messagebox.showerror("Lỗi xuất file", str(exc), parent=self)
+
+    def _show_help(self):
+        messagebox.showinfo(
+            "Hướng dẫn",
+            "1. Nhập hoặc mở CSV Bảng phân đoạn (Segment Table).\n"
+            "2. Nhập hoặc mở CSV Bảng địa chỉ logic.\n"
+            "3. Nhấn 'Dịch dòng đang chọn' hoặc 'Dịch tất cả' để mô phỏng chuyển đổi địa chỉ.\n"
+            "4. Quan sát từng bước chuyển đổi và sơ đồ bộ nhớ.",
+            parent=self,
+        )
+
+    def _show_about(self):
+        messagebox.showinfo(
+            "Giới thiệu",
+            "Chương trình Mô phỏng Segmentation và Địa chỉ logic\n"
+            "Môn học: Hệ điều hành - UTH\n"
+            "Nhóm thực hiện: OS_MEM_12",
+            parent=self,
+        )
+
+    def refresh_ui(self):
+        segments = self._current_segments()
+        addresses = self._current_addresses()
+
+        self.segment_panel.update_table(segments)
+        self.address_panel.update_table(addresses)
+        self.step_trace_panel.update_steps(self._ui_steps, self._step_index)
+        self.batch_result_panel.update_results(self._ui_results)
+
+        if hasattr(self, "memory_map_panel") and hasattr(self.memory_map_panel, "update_map"):
+            self.memory_map_panel.update_map(segments, self.mem_size)
+
 
 if __name__ == "__main__":
-
     app = MainWindow()
     app.mainloop()
