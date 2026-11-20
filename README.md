@@ -11,6 +11,7 @@
 
 Tài liệu đặc tả chi tiết:[DATA_SPEC.md](DATA_SPEC.md)
 
+## Cấu trúc thư mục
 ```text
   ├── report/         # Báo cáo đồ án
   ├── input/          # Dữ liệu mẫu (segments.csv, addresses.csv), edge_cases/ và error_cases/ 
