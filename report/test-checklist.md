@@ -13,8 +13,7 @@
 | T05 | Offset âm | `(1,-1,R)` | `OFFSET_OUT_OF_RANGE` | `OFFSET_OUT_OF_RANGE` | PASS |
 | T06 | Không đủ quyền truy cập | Segment `0` có perm=`R-X`; địa chỉ `(0,200,W)` | `PROTECTION_FAULT` | `PROTECTION_FAULT` | PASS |
 | T07 | Segment không tồn tại | `(3,10,R)` | `SEGMENT_FAULT` | `SEGMENT_FAULT` | PASS |
-| T08 | Quyền truy cập sai định dạng | Thử access khác `R`, `W`, `X` | `INVALID_INPUT` | Chưa chạy | ☐ Chưa kiểm thử |
-
+| T08 | Quyền truy cập sai định dạng | Thử access khác `R`, `W`, `X` (ví dụ `Q`, `r`, `None`); access được kiểm tra **trước** bước tìm segment nên `(9,10,Q)` vẫn là `INVALID_INPUT`, không phải `SEGMENT_FAULT` | `INVALID_INPUT` | `INVALID_INPUT` (`test_translator.py`: `test_translate_invalid_input_more_cases`, `test_translate_invalid_access_checked_before_segment_lookup`) | PASS |
 ## B. Kiểm thử bảng segment và dữ liệu CSV
 
 | ID | Trường hợp kiểm thử | File / dữ liệu | Kết quả mong đợi | Kết quả thực tế | Trạng thái |
