@@ -3,6 +3,12 @@
 Tỷ lệ lỗi là tỷ lệ các dòng được cố ý tạo ra để phát sinh một trong ba lỗi
 khi dịch địa chỉ: SEGMENT_FAULT, OFFSET_OUT_OF_RANGE hoặc PROTECTION_FAULT.
 File đầu ra vẫn giữ đúng schema: seg_id,offset,access.
+
+Mặc định ghi ra output/addresses_generated.csv để KHÔNG ghi đè file mẫu
+input/addresses.csv; muốn thay file mẫu thì truyền --output input/addresses.csv.
+
+Segment table được đọc và kiểm tra bằng core.csv_input (cùng luật với GUI);
+nếu truyền mem_size nhỏ hơn 5000 thì kiểm tra thêm bằng core.validator.
 """
 from __future__ import annotations
 
@@ -10,72 +16,48 @@ import argparse
 import csv
 import math
 import random
+import sys
 from pathlib import Path
 
+if __package__ in (None, ""):  # chạy trực tiếp: python src/core/gen_workload.py
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 ACCESS_TYPES = ("R", "W", "X")
 ACCESS_INDEX = {"R": 0, "W": 1, "X": 2}
-MEMORY_SIZE = 5000
+MEMORY_SIZE = 5000  # kích thước bộ nhớ vật lý của đề bài (cũng là giới hạn csv_input)
+DEFAULT_OUTPUT = "output/addresses_generated.csv"
 
 
-def _load_segments(segments_path):
-    """Đọc segment table từ CSV và xác thực các ràng buộc bộ nhớ."""
+def _load_segments(segments_path, mem_size=MEMORY_SIZE):
+    """Đọc segment table bằng csv_input rồi kiểm tra thêm với mem_size.
+
+    Mọi lỗi dữ liệu được đổi thành ValueError (thông báo giữ nguyên của
+    csv_input/validator) để nơi gọi chỉ cần bắt (OSError, ValueError).
+    """
+    from core.csv_input import ValidationError, read_and_validate_segments
+    from core.result_types import Segment, SegmentTable
+    from core.validator import validate_table
+
+    try:
+        frame = read_and_validate_segments(str(segments_path))
+    except ValidationError as error:
+        raise ValueError(str(error)) from None
+
+    table = SegmentTable(mem_size)
     segments = []
-    with open(segments_path, newline="", encoding="utf-8-sig") as file:
-        reader = csv.DictReader(file)
-        if reader.fieldnames != ["seg_id", "base", "limit", "perm"]:
-            raise ValueError(
-                "segments.csv phải có đúng các cột theo thứ tự: "
-                "seg_id,base,limit,perm"
-            )
+    for row in frame.itertuples(index=False):
+        segment = {
+            "seg_id": int(row.seg_id),
+            "base": int(row.base),
+            "limit": int(row.limit),
+            "perm": str(row.perm).strip().upper(),
+        }
+        segments.append(segment)
+        table.add(Segment(**segment))
 
-        seen_ids = set()
-        used_ranges = []
-        for line_no, row in enumerate(reader, start=2):
-            try:
-                seg_id = int(row["seg_id"])
-                base = int(row["base"])
-                limit = int(row["limit"])
-                perm = row["perm"].strip().upper()
-            except (TypeError, ValueError):
-                raise ValueError(f"Dữ liệu không hợp lệ tại dòng {line_no}") from None
-
-            if seg_id < 0 or base < 0 or limit <= 0 or seg_id in seen_ids:
-                raise ValueError(
-                    f"seg_id/base/limit không hợp lệ tại dòng {line_no}"
-                )
-            if len(perm) != 3 or any(
-                char not in allowed
-                for char, allowed in zip(perm, ("R-", "W-", "X-"))
-            ):
-                raise ValueError(f"perm không hợp lệ tại dòng {line_no}")
-            if base + limit > MEMORY_SIZE:
-                raise ValueError(
-                    f"segment tại dòng {line_no} vượt quá kích thước bộ nhớ "
-                    f"{MEMORY_SIZE}"
-                )
-
-            start, end = base, base + limit
-            overlaps = any(
-                existing_start < end and start < existing_end
-                for existing_start, existing_end in used_ranges
-            )
-            if overlaps:
-                raise ValueError(
-                    f"segment chồng lấn với segment khác tại dòng {line_no}"
-                )
-
-            seen_ids.add(seg_id)
-            used_ranges.append((start, end))
-            segments.append(
-                {
-                    "seg_id": seg_id,
-                    "base": base,
-                    "limit": limit,
-                    "perm": perm,
-                }
-            )
-
+    issues = validate_table(table, mem_size)
+    if issues:
+        raise ValueError("; ".join(issue.message for issue in issues))
     if not segments:
         raise ValueError("segments.csv không có segment nào")
     return segments
@@ -83,10 +65,11 @@ def _load_segments(segments_path):
 
 def generate_workload(
     segments_path="input/segments.csv",
-    output_path="input/addresses.csv",
+    output_path=DEFAULT_OUTPUT,
     count=100,
     error_rate=0.1,
     seed=None,
+    mem_size=MEMORY_SIZE,
 ):
     """Sinh addresses.csv và trả về thống kê số dòng OK/lỗi được dự kiến.
 
@@ -97,16 +80,26 @@ def generate_workload(
         error_rate: Tỷ lệ dòng lỗi trong khoảng 0.0 đến 1.0; số dòng lỗi
             được làm tròn đến số nguyên gần nhất (nửa làm tròn lên).
         seed: Seed tùy chọn để có thể tái tạo cùng một workload.
+        mem_size: Kích thước bộ nhớ vật lý dùng để kiểm tra segment table
+            (1 đến 5000; 5000 là giới hạn hiện tại của csv_input).
+
+    Raises:
+        ValueError: tham số sai hoặc segments.csv không hợp lệ.
+        OSError: không đọc/ghi được file.
     """
     if type(count) is not int or count <= 0:
         raise ValueError("count phải là số nguyên > 0")
+    if type(mem_size) is not int or not 0 < mem_size <= MEMORY_SIZE:
+        raise ValueError(f"mem_size phải là số nguyên trong khoảng 1 đến {MEMORY_SIZE}")
+    if isinstance(error_rate, bool):
+        raise ValueError("error_rate phải là số trong khoảng 0.0 đến 1.0, không phải True/False")
     if not isinstance(error_rate, (int, float)) or not math.isfinite(error_rate):
         raise ValueError("error_rate phải là số hữu hạn trong khoảng 0.0 đến 1.0")
     if not 0 <= error_rate <= 1:
         raise ValueError("error_rate phải nằm trong khoảng 0.0 đến 1.0")
 
     rng = random.Random(seed)
-    segments = _load_segments(segments_path)
+    segments = _load_segments(segments_path, mem_size)
 
     # Chỉ tạo địa chỉ hợp lệ ở nhóm OK: access phải được segment cho phép.
     valid_choices = [
@@ -181,7 +174,12 @@ def main():
         "--segments", default="input/segments.csv", help="Đường dẫn segments.csv"
     )
     parser.add_argument(
-        "--output", default="input/addresses.csv", help="Đường dẫn addresses.csv đầu ra"
+        "--output", default=DEFAULT_OUTPUT,
+        help=f"Đường dẫn addresses.csv đầu ra (mặc định: {DEFAULT_OUTPUT})",
+    )
+    parser.add_argument(
+        "--mem-size", type=int, default=MEMORY_SIZE,
+        help=f"Kích thước bộ nhớ vật lý để kiểm tra segment (mặc định: {MEMORY_SIZE})",
     )
     parser.add_argument(
         "--count", type=int, default=100,
@@ -198,9 +196,10 @@ def main():
 
     try:
         stats = generate_workload(
-            args.segments, args.output, args.count, args.error_rate, args.seed
+            args.segments, args.output, args.count, args.error_rate, args.seed,
+            args.mem_size,
         )
-    except (OSError, ValueError) as error:
+    except (OSError, ValueError, ImportError) as error:
         parser.error(str(error))
 
     print("Đã sinh workload thành công!")
