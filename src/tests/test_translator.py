@@ -65,8 +65,7 @@ class TestTranslate(unittest.TestCase):
 
         self.assertEqual(result.status, Status.SEGMENT_FAULT)
         self.assertIsNone(result.physical)
-        self.assertIn("Khong tim thay", result.reason)
-
+        self.assertIn("không tồn tại", result.reason)
     # Test 4: Offset nằm ngoài giới hạn
     def test_translate_offset_out_of_range(self):
         cases = [
