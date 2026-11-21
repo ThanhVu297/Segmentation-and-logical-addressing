@@ -229,14 +229,21 @@ def main(argv=None):
     args = parser.parse_args(argv)
 
     try:
-        from core.csv_input import read_and_validate_segments
+        from core.csv_input import ValidationError, read_and_validate_segments
         from core.translator import translate
     except ImportError as exc:
         print(f"Không import được module của TV1/TV2: {exc}", file=sys.stderr)
         return 1
 
-    table = table_from_dataframe(read_and_validate_segments(args.segments),
-                                 args.mem_size)
+    try:
+        table = table_from_dataframe(read_and_validate_segments(args.segments),
+                                     args.mem_size)
+    except FileNotFoundError:
+        print(f"Không tìm thấy file: {args.segments}", file=sys.stderr)
+        return 1
+    except ValidationError as exc:
+        print(f"segments.csv không hợp lệ:\n{exc}", file=sys.stderr)
+        return 1
     issues = validate_table(table, args.mem_size)
     for issue in issues:
         print("CẢNH BÁO:", issue.message)
