@@ -1,16 +1,6 @@
-"""Dịch địa chỉ logic sang địa chỉ vật lý theo cơ chế phân đoạn.
 
-Thứ tự xử lý của translate():
-  0. Kiểm tra kiểu dữ liệu đầu vào (seg_id, offset là int; access là R/W/X).
-     Sai -> INVALID_INPUT, chưa tra bảng segment.
-  1-3. Gọi protection.check_fault (TV3): SEGMENT_FAULT -> OFFSET_OUT_OF_RANGE
-     -> PROTECTION_FAULT. Đây là nơi duy nhất quyết định lỗi logic.
-  4. Hợp lệ: physical = base + offset.
+"""Dich dia chi logic sang dia chi vat ly theo co che phan doan."""
 
-translate() chỉ dựng danh sách Step từ kết quả của check_fault.
-"""
-
-from .protection import check_fault
 from .result_types import (
     ACCESS_TYPES,
     Status,
@@ -20,7 +10,7 @@ from .result_types import (
 
 
 def translate(table, seg_id, offset, access):
-    """Dịch một địa chỉ logic và lưu các bước xử lý."""
+    """Dich mot dia chi logic va luu cac buoc xu ly."""
 
     result = TranslationResult(
         seg_id=seg_id,
@@ -28,75 +18,97 @@ def translate(table, seg_id, offset, access):
         access=access,
     )
 
-    # Bước 0: kiểm tra kiểu dữ liệu (check_fault giả định kiểu đã đúng)
+    # Buoc 1: Kiem tra du lieu dau vao
     if type(seg_id) is not int or type(offset) is not int:
         result.status = Status.INVALID_INPUT
-        result.reason = "seg_id và offset phải là số nguyên"
+        result.reason = "seg_id va offset phai la so nguyen"
         result.steps.append(
-            Step("Kiểm tra đầu vào: seg_id hoặc offset không hợp lệ",
+            Step("Kiem tra dau vao: seg_id hoac offset khong hop le",
                  ok=False)
         )
         return result
 
     if not isinstance(access, str) or access not in ACCESS_TYPES:
         result.status = Status.INVALID_INPUT
-        result.reason = "Kiểu truy cập phải là R, W hoặc X"
+        result.reason = "Kieu truy cap phai la R, W hoac X"
         result.steps.append(
-            Step("Kiểm tra đầu vào: kiểu truy cập không hợp lệ", ok=False)
+            Step("Kiem tra dau vao: kieu truy cap khong hop le",
+                 ok=False)
         )
         return result
 
-    result.steps.append(Step("Kiểm tra dữ liệu đầu vào: hợp lệ"))
+    result.steps.append(Step("Kiem tra du lieu dau vao: hop le"))
 
-    # Bước 1-3: mọi quyết định lỗi nằm ở protection.check_fault
-    fault = check_fault(table, seg_id, offset, access)
-    result.status = fault.status
-    result.reason = fault.reason
-
-    if fault.status == Status.SEGMENT_FAULT:
-        result.steps.append(
-            Step(f"Tìm segment {seg_id}: không tìm thấy", ok=False)
-        )
-        return result
-
+    # Buoc 2: Tim segment
     segment = table.get(seg_id)
+
+    if segment is None:
+        result.status = Status.SEGMENT_FAULT
+        result.reason = f"Khong tim thay segment {seg_id}"
+        result.steps.append(
+            Step(f"Tim segment {seg_id}: khong tim thay", ok=False)
+        )
+        return result
+
     base = segment.base
     limit = segment.limit
     perm = segment.perm
 
     result.base = base
     result.limit = limit
+
     result.steps.append(
         Step(
-            f"Tìm thấy segment {seg_id}: "
+            f"Tim thay segment {seg_id}: "
             f"base={base}, limit={limit}, perm={perm}"
         )
     )
 
-    if fault.status == Status.OFFSET_OUT_OF_RANGE:
+    # Buoc 3: Kiem tra offset
+    if offset < 0 or offset >= limit:
+        result.status = Status.OFFSET_OUT_OF_RANGE
+        result.reason = (
+            f"Offset {offset} nam ngoai gioi han "
+            f"0 den {limit - 1}"
+        )
         result.steps.append(
-            Step(f"Kiểm tra offset {offset} với limit {limit}: lỗi",
-                 ok=False)
+            Step(
+                f"Kiem tra offset {offset} voi limit {limit}: loi",
+                ok=False,
+            )
         )
         return result
 
     result.steps.append(
-        Step(f"Kiểm tra offset {offset} với limit {limit}: hợp lệ")
+        Step(f"Kiem tra offset {offset} voi limit {limit}: hop le")
     )
 
-    if fault.status == Status.PROTECTION_FAULT:
+    # Buoc 4: Kiem tra quyen truy cap
+    if not isinstance(perm, str) or len(perm) != len(ACCESS_TYPES):
+        result.status = Status.INVALID_INPUT
+        result.reason = "Cau hinh quyen cua segment khong hop le"
         result.steps.append(
-            Step(f"Kiểm tra quyền {access} với perm {perm}: bị từ chối",
-                 ok=False)
+            Step("Kiem tra cau hinh quyen: khong hop le", ok=False)
         )
         return result
 
-    result.steps.append(
-        Step(f"Kiểm tra quyền {access} với perm {perm}: được phép")
-    )
+    permission_index = ACCESS_TYPES.index(access)
 
-    # Bước 4: tính địa chỉ vật lý
+    if perm[permission_index] != access:
+        result.status = Status.PROTECTION_FAULT
+        result.reason = f"Segment {seg_id} khong cho phep truy cap {access}"
+        result.steps.append(
+            Step(f"Kiem tra quyen {access}: bi tu choi", ok=False)
+        )
+        return result
+
+    result.steps.append(Step(f"Kiem tra quyen {access}: duoc phep"))
+
+    # Buoc 5: Tinh dia chi vat ly
     result.physical = base + offset
+    result.status = Status.OK
+    result.reason = ""
+
     result.steps.append(
         Step(f"Physical = {base} + {offset} = {result.physical}")
     )
@@ -104,66 +116,50 @@ def translate(table, seg_id, offset, access):
     return result
 
 
-def _invalid_address(reason, step_description, seg_id=None, offset=None,
-                     access=None):
-    """Tạo kết quả INVALID_INPUT cho một phần tử địa chỉ không đọc được."""
-    return TranslationResult(
-        seg_id=seg_id,
-        offset=offset,
-        access=access,
-        status=Status.INVALID_INPUT,
-        reason=reason,
-        steps=[Step(step_description, ok=False)],
-    )
-
-
 def translate_many(table, list_addresses):
-    """Dịch nhiều địa chỉ theo thứ tự đầu vào.
-
-    Phần tử sai định dạng cho ra INVALID_INPUT (kèm lý do cụ thể) và
-    không làm dừng các phần tử còn lại.
-    """
+    """Dich nhieu dia chi theo thu tu dau vao."""
 
     results = []
 
-    for index, address in enumerate(list_addresses, start=1):
-        label = f"Địa chỉ thứ {index}"
-
-        if isinstance(address, dict):
-            missing = [key for key in ("seg_id", "offset", "access")
-                       if key not in address]
-            if missing:
-                results.append(_invalid_address(
-                    f"{label} thiếu trường: {', '.join(missing)}",
-                    f"Đọc dữ liệu địa chỉ: thiếu {', '.join(missing)}",
-                    address.get("seg_id"),
-                    address.get("offset"),
-                    address.get("access"),
-                ))
-                continue
-            seg_id = address["seg_id"]
-            offset = address["offset"]
-            access = address["access"]
-
-        elif isinstance(address, (tuple, list)) and len(address) == 3:
-            seg_id, offset, access = address
-
-        else:
-            results.append(_invalid_address(
-                f"{label} phải là dict hoặc bộ 3 (seg_id, offset, access)",
-                "Kiểm tra định dạng địa chỉ: không hợp lệ",
-            ))
-            continue
-
+    for address in list_addresses:
         try:
+            if isinstance(address, dict):
+                seg_id = address["seg_id"]
+                offset = address["offset"]
+                access = address["access"]
+
+            elif isinstance(address, (tuple, list)) and len(address) == 3:
+                seg_id, offset, access = address
+
+            else:
+                result = TranslationResult(
+                    seg_id=None,
+                    offset=None,
+                    access=None,
+                    status=Status.INVALID_INPUT,
+                    reason="Moi dia chi phai la dict hoac bo 3 "
+                           "(seg_id, offset, access)",
+                    steps=[
+                        Step("Kiem tra dinh dang dia chi: khong hop le",
+                             ok=False)
+                    ],
+                )
+                results.append(result)
+                continue
+
             results.append(translate(table, seg_id, offset, access))
-        except (TypeError, ValueError, AttributeError) as error:
-            # Lỗi bất ngờ từ bảng segment hoặc dữ liệu segment, không phải
-            # lỗi do địa chỉ: nêu rõ loại lỗi để dễ tìm nguyên nhân.
-            results.append(_invalid_address(
-                f"{label}: lỗi khi dịch ({type(error).__name__}: {error})",
-                "Dịch địa chỉ: gặp lỗi ngoài dự kiến",
-                seg_id, offset, access,
-            ))
+
+        except (KeyError, TypeError, ValueError):
+            result = TranslationResult(
+                seg_id=None,
+                offset=None,
+                access=None,
+                status=Status.INVALID_INPUT,
+                reason="Dia chi thieu truong hoac sai dinh dang",
+                steps=[
+                    Step("Doc du lieu dia chi: khong hop le", ok=False)
+                ],
+            )
+            results.append(result)
 
     return results
