@@ -57,10 +57,10 @@ Cấu trúc cột: `seg_id,offset,access,base,limit,physical,status,reason`
 * *Ví dụ lỗi:* `0,400,R,1000,400,,OFFSET_OUT_OF_RANGE,Offset vuot qua limit`
 
 ### 2.4. File `output/trace_steps.csv` (Truy vết chi tiết từng bước)
-Cấu trúc cột: `result_no,seg_id,offset,access,base,limit,physical,status,reason,step_no,step_description,step_ok`
+Cấu trúc cột: `address_position,seg_id,offset,access,base,limit,physical,status,reason,step,step_description,step_passed`
 
 * Lưu chi tiết từng bước kiểm tra thuật toán (mỗi bước một dòng); các trường tổng hợp được lặp lại để tiện lọc/đối chiếu.
-* Địa chỉ bị `INVALID_INPUT` (không đi qua các bước thuật toán) vẫn xuất 1 dòng với các trường bước (`step_no`, `step_description`, `step_ok`) để trống.
+* Địa chỉ bị `INVALID_INPUT` (không đi qua các bước thuật toán) vẫn xuất 1 dòng với các trường bước (`step`, `step_description`, `step_passed`) để trống.
 
 ---
 
