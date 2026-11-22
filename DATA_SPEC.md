@@ -39,7 +39,7 @@ Cấu trúc cột: `seg_id,offset,access`
 | :--- | :--- | :--- |
 | `seg_id` | Số nguyên | Không phải số nguyên $\rightarrow$ `INVALID_INPUT`. Là số nguyên nhưng không có trong bảng $\rightarrow$ `SEGMENT_FAULT`. |
 | `offset` | Số nguyên | Có thể âm hoặc vượt `limit` (xử lý ở bước dịch: `OFFSET_OUT_OF_RANGE`). Không phải số hoặc để trống $\rightarrow$ `INVALID_INPUT`. |
-| `access` | Ký tự | Nhận một trong ba ký tự `R`, `W`, `X` (chuẩn hóa chữ hoa trước khi kiểm tra). Ký tự khác $\rightarrow$ `INVALID_INPUT`. |
+| `access` | Ký tự | Nhận một trong ba ký tự R, W, X, không phân biệt chữ hoa/chữ thường. Trước khi kiểm tra quyền, chương trình chuẩn hóa giá trị thành chữ hoa (r → R, w → W, x → X). Ký tự khác $\rightarrow$ `INVALID_INPUT`. |
 
 * **Trường hợp file chỉ có dòng tiêu đề (0 dòng dữ liệu):**
   * `segments.csv`: Bị từ chối (bảng segment rỗng).
