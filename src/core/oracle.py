@@ -16,6 +16,9 @@ def reference_check_permission(perm: object, access: object) -> bool:
     if not isinstance(perm, str) or not isinstance(access, str):
         return False
 
+    perm = perm.strip().upper()
+    access = access.strip().upper()
+
     position = _ACCESS_POSITION.get(access)
     return (
         position is not None
