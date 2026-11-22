@@ -81,15 +81,15 @@ Hệ thống kiểm tra theo **thứ tự ưu tiên cố định 4 bước** và
 1. **Bước 1 – Segment:** `seg_id` không có trong Segment Table $\rightarrow$ `SEGMENT_FAULT`.
 2. **Bước 2 – Offset:** `offset < 0` hoặc `offset >= limit` $\rightarrow$ `OFFSET_OUT_OF_RANGE`.
 3. **Bước 3 – Quyền truy cập:** `R` khớp `perm[0]`, `W` khớp `perm[1]`, `X` khớp `perm[2]`. Không thỏa $\rightarrow$ `PROTECTION_FAULT`.
-4. **Bước 4 – Thành công:** Vượt qua cả 3 bước $\rightarrow$ `OK`, tính $\text{physical} = \text{base} + \text{offset}$[cite: 8].
+4. **Bước 4 – Thành công:** Vượt qua cả 3 bước $\rightarrow$ `OK`, tính $\text{physical} = \text{base} + \text{offset}$.
 
 | Mã trạng thái (`status`) | Ý nghĩa |
 | :--- | :--- |
-| **`OK`** | Dịch địa chỉ thành công[cite: 8]. |
-| **`SEGMENT_FAULT`** | `seg_id` không tồn tại trong bảng phân đoạn[cite: 8]. |
-| **`OFFSET_OUT_OF_RANGE`** | `offset < 0` hoặc `offset >= limit`[cite: 8]. |
-| **`PROTECTION_FAULT`** | `access` không khớp quyền `perm` của segment[cite: 8]. |
-| **`INVALID_INPUT`** | Dòng trong `addresses.csv` sai định dạng (kiểu dữ liệu, ký tự quyền, thừa/thiếu ô...)[cite: 8]. |
+| **`OK`** | Dịch địa chỉ thành công. |
+| **`SEGMENT_FAULT`** | `seg_id` không tồn tại trong bảng phân đoạn. |
+| **`OFFSET_OUT_OF_RANGE`** | `offset < 0` hoặc `offset >= limit`. |
+| **`PROTECTION_FAULT`** | `access` không khớp quyền `perm` của segment. |
+| **`INVALID_INPUT`** | Dòng trong `addresses.csv` sai định dạng (kiểu dữ liệu, ký tự quyền, thừa/thiếu ô...). |
 
 ---
 
@@ -97,9 +97,9 @@ Hệ thống kiểm tra theo **thứ tự ưu tiên cố định 4 bước** và
 
 | Tình huống lỗi | Cách xử lý của ứng dụng |
 | :--- | :--- |
-| `segments.csv` vi phạm quy tắc validate (Mục 6) | Từ chối nạp toàn bộ file, báo lỗi kèm số dòng và lý do. Không thực hiện dịch[cite: 8]. |
-| `addresses.csv` rỗng hoàn toàn hoặc sai/thiếu tiêu đề | Từ chối nạp toàn bộ file và hiển thị thông báo lỗi[cite: 8]. |
-| Một dòng trong `addresses.csv` sai định dạng | Đánh dấu dòng đó là `INVALID_INPUT`, giữ nguyên vị trí và tiếp tục dịch các dòng sau[cite: 8]. |
+| `segments.csv` vi phạm quy tắc validate (Mục 6) | Từ chối nạp toàn bộ file, báo lỗi kèm số dòng và lý do. Không thực hiện dịch. |
+| `addresses.csv` rỗng hoàn toàn hoặc sai/thiếu tiêu đề | Từ chối nạp toàn bộ file và hiển thị thông báo lỗi. |
+| Một dòng trong `addresses.csv` sai định dạng | Đánh dấu dòng đó là `INVALID_INPUT`, giữ nguyên vị trí và tiếp tục dịch các dòng sau. |
 
 ---
 
@@ -122,59 +122,59 @@ src/tests/expected/     # Bộ đáp án chuẩn (Oracle), tính tay độc lậ
 ```
 
 ### 6.1. Kết quả mong đợi cho bộ dữ liệu chuẩn (`input/segments.csv` + `input/addresses.csv`)
-Đối chiếu với `src/tests/expected/expected_trace.csv` (tổng 18 dòng)[cite: 8]:
-* **8** dòng `OK`[cite: 8]
-* **5** dòng `OFFSET_OUT_OF_RANGE`[cite: 8]
-* **3** dòng `PROTECTION_FAULT`[cite: 8]
-* **2** dòng `SEGMENT_FAULT`[cite: 8]
-* **0** dòng `INVALID_INPUT`[cite: 8]
+Đối chiếu với `src/tests/expected/expected_trace.csv` (tổng 18 dòng):
+* **8** dòng `OK`
+* **5** dòng `OFFSET_OUT_OF_RANGE`
+* **3** dòng `PROTECTION_FAULT`
+* **2** dòng `SEGMENT_FAULT`
+* **0** dòng `INVALID_INPUT`
 
 ### 6.2. Test Cases biên (`input/edge_cases/`)
 
 | File Test Case | Chạy kèm với | Kết quả mong đợi |
 | :--- | :--- | :--- |
-| `segments_adjacent.csv` | *(Chỉ nạp bảng)* | Hợp lệ: hai segment liền kề (`1000–1399` và `1400–1799`)[cite: 8]. |
-| `segments_memory_boundary.csv` | `addresses_memory_boundary.csv` | Hợp lệ: segment kết thúc đúng tại byte `4999`. Khớp `expected_trace_memory_boundary.csv`[cite: 8]. |
+| `segments_adjacent.csv` | *(Chỉ nạp bảng)* | Hợp lệ: hai segment liền kề (`1000–1399` và `1400–1799`). |
+| `segments_memory_boundary.csv` | `addresses_memory_boundary.csv` | Hợp lệ: segment kết thúc đúng tại byte `4999`. Khớp `expected_trace_memory_boundary.csv`. |
 
 ### 6.3. Test Cases lỗi cho `segments.csv` (`input/error_cases/`)
-Tất cả các trường hợp dưới đây đều phải **từ chối nạp file** và hiển thị thông báo lỗi chi tiết[cite: 8]:
+Tất cả các trường hợp dưới đây đều phải **từ chối nạp file** và hiển thị thông báo lỗi chi tiết:
 
 | File Test Case | Mô tả lỗi | Kết quả mong đợi |
 | :--- | :--- | :--- |
-| `segments_empty.csv` | File rỗng[cite: 8] | Từ chối file[cite: 8] |
-| `segments_missing_column.csv` | Thiếu cột `limit`[cite: 8] | Từ chối file[cite: 8] |
-| `segments_invalid_number.csv` | `limit = abc`[cite: 8] | Từ chối file[cite: 8] |
-| `segments_zero_limit.csv` | `limit = 0`[cite: 8] | Từ chối file[cite: 8] |
-| `segments_negative_base.csv` | `base = -100`[cite: 8] | Từ chối file[cite: 8] |
-| `segments_negative_limit.csv` | `limit = -400`[cite: 8] | Từ chối file[cite: 8] |
-| `segments_duplicate_id.csv` | Trùng `seg_id = 0`[cite: 8] | Từ chối file[cite: 8] |
-| `segments_overlap.csv` | Segment 0 (`1000–1399`) chồng lấn Segment 1 (`1300–1699`)[cite: 8] | Từ chối file[cite: 8] |
-| `segments_exceeds_memory.csv` | Segment 1 kết thúc ở byte `5199` (`> 4999`)[cite: 8] | Từ chối file[cite: 8] |
-| `segments_exceeds_memory_by_one.csv` | `base + limit = 5001` (vượt đúng 1 byte)[cite: 8] | Từ chối file[cite: 8] |
-| `segments_invalid_perm_length.csv` | `perm = RW` (thiếu độ dài)[cite: 8] | Từ chối file[cite: 8] |
-| `segments_invalid_perm_chars.csv` | `perm = ABC`[cite: 8] | Từ chối file[cite: 8] |
+| `segments_empty.csv` | File rỗng | Từ chối file |
+| `segments_missing_column.csv` | Thiếu cột `limit` | Từ chối file |
+| `segments_invalid_number.csv` | `limit = abc` | Từ chối file. |
+| `segments_zero_limit.csv` | `limit = 0` | Từ chối file |
+| `segments_negative_base.csv` | `base = -100` | Từ chối file |
+| `segments_negative_limit.csv` | `limit = -400` | Từ chối file |
+| `segments_duplicate_id.csv` | Trùng `seg_id = 0` | Từ chối file |
+| `segments_overlap.csv` | Segment 0 (`1000–1399`) chồng lấn Segment 1 (`1300–1699`) | Từ chối file |
+| `segments_exceeds_memory.csv` | Segment 1 kết thúc ở byte `5199` (`> 4999`) | Từ chối file |
+| `segments_exceeds_memory_by_one.csv` | `base + limit = 5001` (vượt đúng 1 byte) | Từ chối file |
+| `segments_invalid_perm_length.csv` | `perm = RW` (thiếu độ dài) | Từ chối file |
+| `segments_invalid_perm_chars.csv` | `perm = ABC` | Từ chối file |
 
 ### 6.4. Test Cases lỗi cho `addresses.csv` (`input/error_cases/`)
-*(Chạy trên nền `input/segments.csv` chuẩn)*[cite: 8]
+*(Chạy trên nền `input/segments.csv` chuẩn)*
 
 | File Test Case | Mô tả lỗi / Trường hợp kiểm thử | Kết quả mong đợi |
 | :--- | :--- | :--- |
-| `addresses_empty.csv` | File rỗng[cite: 8] | Từ chối file[cite: 8] |
-| `addresses_missing_column.csv` | Thiếu cột `access`[cite: 8] | Từ chối file[cite: 8] |
-| `addresses_invalid_access.csv` | `access = Z` (sai ký tự) và `access = r` (chữ thường hợp lệ)[cite: 8] | Dòng chứa `Z` ghi `INVALID_INPUT`; dòng chứa `r` được chuẩn hóa thành `R` và dịch `OK`. Khớp `expected_trace_invalid_access.csv`. |
-| `addresses_invalid_offset.csv` | `offset = abc` hoặc để trống[cite: 8] | Dòng 1, 3 ghi `INVALID_INPUT`, dòng 2 ghi `OK`. Khớp `expected_trace_invalid_offset.csv`[cite: 8]. |
-| `addresses_invalid_seg_id.csv` | `seg_id = abc`[cite: 8] | Dòng đó ghi `INVALID_INPUT`, các dòng khác dịch bình thường. Khớp `expected_trace_invalid_seg_id.csv`[cite: 8]. |
-| `addresses_negative_offset.csv` | `offset = -5` (hợp lệ về cấu trúc)[cite: 8] | Ghi `OFFSET_OUT_OF_RANGE`, không phải `INVALID_INPUT`. Khớp `expected_trace_negative_offset.csv`[cite: 8]. |
+| `addresses_empty.csv` | File rỗng | Từ chối file |
+| `addresses_missing_column.csv` | Thiếu cột `access`| Từ chối file |
+| `addresses_invalid_access.csv` | `access = Z` (sai ký tự) và `access = r` (chữ thường hợp lệ) | Dòng chứa `Z` ghi `INVALID_INPUT`; dòng chứa `r` được chuẩn hóa thành `R` và dịch `OK`. Khớp `expected_trace_invalid_access.csv`. |
+| `addresses_invalid_offset.csv` | `offset = abc` hoặc để trống | Dòng 1, 3 ghi `INVALID_INPUT`, dòng 2 ghi `OK`. Khớp `expected_trace_invalid_offset.csv`. |
+| `addresses_invalid_seg_id.csv` | `seg_id = abc` | Dòng đó ghi `INVALID_INPUT`, các dòng khác dịch bình thường. Khớp `expected_trace_invalid_seg_id.csv`. |
+| `addresses_negative_offset.csv` | `offset = -5` (hợp lệ về cấu trúc)[cite: 8] | Ghi `OFFSET_OUT_OF_RANGE`, không phải `INVALID_INPUT`. Khớp `expected_trace_negative_offset.csv`. |
 
 ---
 
 ## 7. Tổng hợp quy tắc Validate bảng `segments.csv`
-File `segments.csv` bị từ chối ngay lập tức nếu vi phạm một trong các điều kiện[cite: 8]:
-1. File rỗng, không có dòng dữ liệu, hoặc thiếu tiêu đề cột[cite: 8].
-2. `base`, `limit`, `seg_id` không phải số nguyên[cite: 8].
-3. `base < 0`[cite: 8].
-4. `limit <= 0`[cite: 8].
-5. Trùng `seg_id`[cite: 8].
-6. `perm` sai quy chuẩn (khác 3 ký tự hoặc chứa ký tự khác `R`, `W`, `X`, `-`, hoặc sai vị trí)[cite: 8].
-7. Vượt bộ nhớ vật lý (`base + limit > 5000`)[cite: 8].
-8. Có từ 2 segment trở lên chồng lấn nhau[cite: 8].
+File `segments.csv` bị từ chối ngay lập tức nếu vi phạm một trong các điều kiện:
+1. File rỗng, không có dòng dữ liệu, hoặc thiếu tiêu đề cột.
+2. `base`, `limit`, `seg_id` không phải số nguyên.
+3. `base < 0`.
+4. `limit <= 0`.
+5. Trùng `seg_id`.
+6. `perm` sai quy chuẩn (khác 3 ký tự hoặc chứa ký tự khác `R`, `W`, `X`, `-`, hoặc sai vị trí).
+7. Vượt bộ nhớ vật lý (`base + limit > 5000`).
+8. Có từ 2 segment trở lên chồng lấn nhau.
