@@ -38,7 +38,7 @@ def create_gui_panels(
     cb_next_step=None,
     cb_export=None,
 ):
-    """Tao giao dien 2 cot giong anh mau (tieng Viet khong dau)."""
+    """Tao giao dien 2 cot giong anh mau (tieng Viet khong dau, du cot BASE/LIMIT + thanh cuon)."""
     style = ttk.Style()
     style.theme_use("clam")
     style.configure(
@@ -206,16 +206,28 @@ def create_gui_panels(
         bg="#f1f5f9", fg="#334155", font=("Segoe UI", 9, "bold")
     ).pack(anchor="w", pady=(0, 2))
 
+    res_container = tk.Frame(left_col, bg="#f1f5f9")
+    res_container.pack(fill="both", expand=True)
+    res_container.rowconfigure(0, weight=1)
+    res_container.columnconfigure(0, weight=1)
+
     res_columns = ("step", "detail", "status")
-    tree_res = ttk.Treeview(left_col, columns=res_columns, show="headings", height=5, style="Modern.Treeview")
+    tree_res = ttk.Treeview(res_container, columns=res_columns, show="headings", height=5, style="Modern.Treeview")
     tree_res.heading("step", text="Buoc")
     tree_res.heading("detail", text="Noi dung xu ly")
     tree_res.heading("status", text="Trang thai")
 
-    tree_res.column("step", width=90, anchor="center")
-    tree_res.column("detail", width=270, anchor="w")
-    tree_res.column("status", width=110, anchor="center")
-    tree_res.pack(fill="both", expand=True)
+    tree_res.column("step", width=85, minwidth=85, stretch=False, anchor="center")
+    tree_res.column("detail", width=330, minwidth=280, stretch=False, anchor="w")
+    tree_res.column("status", width=115, minwidth=110, stretch=False, anchor="center")
+
+    y_scroll3 = ttk.Scrollbar(res_container, orient="vertical", command=tree_res.yview)
+    x_scroll3 = ttk.Scrollbar(res_container, orient="horizontal", command=tree_res.xview)
+    tree_res.configure(yscrollcommand=y_scroll3.set, xscrollcommand=x_scroll3.set)
+
+    tree_res.grid(row=0, column=0, sticky="nsew")
+    y_scroll3.grid(row=0, column=1, sticky="ns")
+    x_scroll3.grid(row=1, column=0, sticky="ew")
 
     tree_res.tag_configure("ok", background="#dcfce7", foreground="#166534")
     tree_res.tag_configure("error", background="#fee2e2", foreground="#991b1b")
@@ -235,7 +247,7 @@ def create_gui_panels(
     ).pack(anchor="w", pady=(0, 3))
 
     canvas = tk.Canvas(
-        right_col, width=520, height=275, bg="#ffffff",
+        right_col, width=520, height=265, bg="#ffffff",
         highlightthickness=1, highlightbackground="#cbd5e1"
     )
     canvas.pack(fill="both", expand=True)
@@ -281,20 +293,42 @@ def create_gui_panels(
 
     _make_btn(bar5, "Xuat ket qua CSV", cb_export, bg="#ffffff", fg="#334155").pack(side="right")
 
-    summary_cols = ("stt", "seg_id", "offset", "access", "physical", "status", "reason")
-    tree_summary = ttk.Treeview(right_col, columns=summary_cols, show="headings", height=7, style="Modern.Treeview")
+    summary_container = tk.Frame(right_col, bg="#f1f5f9")
+    summary_container.pack(fill="both", expand=True)
+    summary_container.rowconfigure(0, weight=1)
+    summary_container.columnconfigure(0, weight=1)
+
+    summary_cols = ("stt", "seg_id", "base", "limit", "offset", "access", "physical", "status", "reason")
+    tree_summary = ttk.Treeview(
+        summary_container, columns=summary_cols, show="headings", height=7, style="Modern.Treeview"
+    )
     for col, title, w in [
-        ("stt", "STT", 40),
-        ("seg_id", "SEG_ID", 55),
-        ("offset", "OFFSET", 60),
-        ("access", "ACCESS", 55),
-        ("physical", "PHYSICAL", 70),
-        ("status", "STATUS", 115),
-        ("reason", "REASON", 180),
+        ("stt", "STT", 38),
+        ("seg_id", "SEG_ID", 52),
+        ("base", "BASE", 55),
+        ("limit", "LIMIT", 55),
+        ("offset", "OFFSET", 58),
+        ("access", "ACCESS", 52),
+        ("physical", "PHYSICAL", 68),
+        ("status", "STATUS", 130),
+        ("reason", "REASON", 340),
     ]:
         tree_summary.heading(col, text=title)
-        tree_summary.column(col, width=w, anchor="w" if col == "reason" else "center")
-    tree_summary.pack(fill="both", expand=True)
+        tree_summary.column(
+            col,
+            width=w,
+            minwidth=w,
+            stretch=False,
+            anchor="w" if col == "reason" else "center",
+        )
+
+    y_scroll5 = ttk.Scrollbar(summary_container, orient="vertical", command=tree_summary.yview)
+    x_scroll5 = ttk.Scrollbar(summary_container, orient="horizontal", command=tree_summary.xview)
+    tree_summary.configure(yscrollcommand=y_scroll5.set, xscrollcommand=x_scroll5.set)
+
+    tree_summary.grid(row=0, column=0, sticky="nsew")
+    y_scroll5.grid(row=0, column=1, sticky="ns")
+    x_scroll5.grid(row=1, column=0, sticky="ew")
 
     tree_summary.tag_configure("ok", background="#dcfce7", foreground="#166534")
     tree_summary.tag_configure("error", background="#fee2e2", foreground="#991b1b")
