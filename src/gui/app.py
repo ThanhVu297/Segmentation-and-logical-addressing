@@ -505,7 +505,7 @@ class SegmentationApp:
             messagebox.showinfo("Chua co ket qua", "Chua co ket qua nao de xuat.", parent=self.root)
             return
 
-        default_path = PROJECT_ROOT / "output" / "ket_qua_dich.csv"
+        default_path = PROJECT_ROOT / "output" / "trace.csv"
         default_path.parent.mkdir(parents=True, exist_ok=True)
         selected = filedialog.asksaveasfilename(
             parent=self.root,
