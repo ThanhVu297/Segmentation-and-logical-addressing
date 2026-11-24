@@ -2,12 +2,11 @@ from __future__ import annotations
 
 import csv
 import sys
+import tempfile
 import tkinter as tk
 import unicodedata
 from pathlib import Path
 from tkinter import filedialog, messagebox
-
-import pandas as pd
 
 SRC_DIR = Path(__file__).resolve().parents[1]
 PROJECT_ROOT = SRC_DIR.parent
@@ -43,7 +42,6 @@ class SegmentationApp:
         self.controller = SegmentationController()
         self.segment_table = self.controller.segment_table
 
-        # Danh sach luu tren GUI de thao tac them/xoa linh hoat
         self.segments_data: list[dict] = []
         self.addresses_data: list[dict] = []
         self.results: list[TranslationResult] = []
@@ -81,7 +79,6 @@ class SegmentationApp:
         self.lbl_batch_status = widgets["lbl_batch_status"]
         self.inputs = widgets["inputs"]
 
-        # Double-click vao dong segment de nap len form sua nhanh
         self.tree_seg.bind("<Double-1>", self._on_select_segment_row)
         self.root.after_idle(self.redraw_memory_map)
 
@@ -178,7 +175,7 @@ class SegmentationApp:
                     "limit": int(r[2].strip()),
                     "perm": r[3].strip().upper(),
                 })
-            except ValueError:
+            except (ValueError, IndexError):
                 messagebox.showerror("Loi du lieu", f"Dong segment khong hop le: {r}", parent=self.root)
                 return
 
@@ -234,34 +231,43 @@ class SegmentationApp:
             self.inputs["perm"].set(vals[3])
 
     def _sync_segments_to_controller(self) -> None:
-        # Cap nhat lai controller.segment_table tu self.segments_data
+        """Nap lai du lieu Segment vao controller thong qua file CSV tam."""
         self.controller = SegmentationController()
         self.segment_table = self.controller.segment_table
+
         if self.segments_data:
-            df = pd.DataFrame(self.segments_data)
-            self.controller.segment_df = df
-            # Nap vao segment_table thong qua phuong thuc co san cua core
-            from core.result_types import Segment
-            for row in self.segments_data:
-                seg_obj = Segment(
-                    seg_id=row["seg_id"],
-                    base=row["base"],
-                    limit=row["limit"],
-                    perm=row["perm"],
-                )
-                if hasattr(self.segment_table, "add"):
-                    self.segment_table.add(seg_obj)
-                elif hasattr(self.segment_table, "segments"):
-                    if isinstance(self.segment_table.segments, dict):
-                        self.segment_table.segments[row["seg_id"]] = seg_obj
-                    else:
-                        self.segment_table.segments.append(seg_obj)
+            with tempfile.NamedTemporaryFile(
+                mode="w", suffix=".csv", delete=False, encoding="utf-8", newline=""
+            ) as tmp_s:
+                writer = csv.writer(tmp_s)
+                writer.writerow(["seg_id", "base", "limit", "perm"])
+                for r in self.segments_data:
+                    writer.writerow([r["seg_id"], r["base"], r["limit"], r["perm"]])
+                tmp_seg_path = tmp_s.name
+
+            with tempfile.NamedTemporaryFile(
+                mode="w", suffix=".csv", delete=False, encoding="utf-8", newline=""
+            ) as tmp_a:
+                writer = csv.writer(tmp_a)
+                writer.writerow(["seg_id", "offset", "access"])
+                writer.writerow([0, 0, "R"])
+                tmp_addr_path = tmp_a.name
+
+            try:
+                self.controller.load_files(tmp_seg_path, tmp_addr_path)
+                self.segment_table = self.controller.segment_table
+            except Exception as exc:
+                messagebox.showerror("Loi bang phan doan", to_ascii_vi(str(exc)), parent=self.root)
+            finally:
+                Path(tmp_seg_path).unlink(missing_ok=True)
+                Path(tmp_addr_path).unlink(missing_ok=True)
 
         for item in self.tree_seg.get_children():
             self.tree_seg.delete(item)
         for row in self.segments_data:
             self.tree_seg.insert(
-                "", "end",
+                "",
+                "end",
                 values=(row["seg_id"], row["base"], row["limit"], row["perm"], "San sang"),
             )
         self.lbl_seg_count.configure(text=f"{len(self.segments_data)} SEGMENTS")
@@ -314,7 +320,8 @@ class SegmentationApp:
             self.tree_addr.delete(item)
         for idx, row in enumerate(self.addresses_data, start=1):
             self.tree_addr.insert(
-                "", "end",
+                "",
+                "end",
                 values=(idx, row["seg_id"], row["offset"], row["access"], "Cho dich"),
             )
         self.lbl_addr_count.configure(text=f"{len(self.addresses_data)} DIA CHI")
@@ -377,7 +384,8 @@ class SegmentationApp:
             reason = to_ascii_vi(res.reason) or ("Dich thanh cong" if status == Status.OK.value else "")
             tag = "ok" if status == Status.OK.value else "error"
             self.tree_summary.insert(
-                "", "end",
+                "",
+                "end",
                 values=(
                     idx,
                     res.seg_id,
@@ -400,7 +408,11 @@ class SegmentationApp:
 
     def show_next_step(self) -> None:
         if not self.results:
-            messagebox.showinfo("Chua co ket qua", "Hay bam 'Dich dong dang chon' hoac 'Dich tat ca' truoc.", parent=self.root)
+            messagebox.showinfo(
+                "Chua co ket qua",
+                "Hay bam 'Dich dong dang chon' hoac 'Dich tat ca' truoc.",
+                parent=self.root,
+            )
             return
 
         current = self.results[self.current_result_index]
@@ -422,7 +434,8 @@ class SegmentationApp:
         for idx, step in enumerate(result.steps[: self.visible_step_count], start=1):
             tag = "ok" if step.ok else "error"
             self.tree_res.insert(
-                "", "end",
+                "",
+                "end",
                 values=(idx, to_ascii_vi(step.description), "Hop le" if step.ok else "Loi"),
                 tags=(tag,),
             )
@@ -433,7 +446,8 @@ class SegmentationApp:
         if self.visible_step_count >= len(result.steps):
             tag = "ok" if status == Status.OK.value else "error"
             self.tree_res.insert(
-                "", "end",
+                "",
+                "end",
                 values=("KET LUAN", reason_clean, status),
                 tags=(tag,),
             )
