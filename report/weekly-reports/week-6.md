@@ -1,4 +1,8 @@
 # Báo cáo tiến độ Tuần 6
+TV1:
+-Viết tối thêm test để kiểm thử csv_input.
+-Sửa lại code và rà sát lại lỗi của các thành viên .
+-Viết báo cáo và quay video demo.
 
 TV2:
 - Xây dựng Pseudocode mô tả các bước thực hiện thuật toán dịch địa chỉ.
