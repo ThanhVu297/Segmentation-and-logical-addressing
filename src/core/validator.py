@@ -54,7 +54,6 @@ def find_overlaps(segments):
     for i, a in enumerate(ordered):
         a_end = a.base + a.limit
         j = i + 1
-        # ordered theo base tăng dần nên có thể dừng ngay khi b.base >= a_end
         while j < len(ordered) and ordered[j].base < a_end:
             b = ordered[j]
             b_end = b.base + b.limit
@@ -83,7 +82,9 @@ def validate_table(table, mem_size=None):
     usable = []
     for seg in get_segments(table):
         perm = getattr(seg, "perm", "---")
-        if not _PERM_RE.match(str(perm)):
+        # Ký hiệu quyền được chấp nhận không phân biệt hoa/thường.
+        normalized_perm = str(perm).strip().upper()
+        if not _PERM_RE.fullmatch(normalized_perm):
             issues.append(
                 ValidationIssue(
                     INVALID_PERM,

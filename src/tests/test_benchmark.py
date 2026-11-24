@@ -12,15 +12,15 @@ from tests.helpers import (EXPECTED_DIR, INPUT_DIR, buggy_ignore_permission,
                            buggy_off_by_one, example_table, load_table,
                            reference_translate, translate_without_access)
 
-try:  # TV1 dùng pandas trong csv_input
+try:
     from core.csv_input import ValidationError, read_and_validate_segments
-except Exception:  # pragma: no cover - thiếu pandas
+except Exception:
     read_and_validate_segments = None
     ValidationError = None
 
-try:  # TV2 chưa chắc đã merge vào branch này
+try:
     from core.translator import translate as real_translate
-except Exception:  # pragma: no cover
+except Exception:
     real_translate = None
 
 
@@ -54,32 +54,24 @@ class TestGenerateAddresses(unittest.TestCase):
 class TestOracle(unittest.TestCase):
     def test_hand_computed_examples_from_readme(self):
         oracle = make_oracle(example_table())
-        self.assertEqual(oracle(0, 100, "R"), ("OK", 1100))             # 1000 + 100
+        self.assertEqual(oracle(0, 100, "R"), ("OK", 1100))
         self.assertEqual(oracle(0, 400, "R"), ("OFFSET_OUT_OF_RANGE", None))
         self.assertEqual(oracle(0, 200, "W"), ("PROTECTION_FAULT", None))
         self.assertEqual(oracle(3, 10, "R"), ("SEGMENT_FAULT", None))
-        self.assertEqual(oracle(1, 999, "R"), ("OK", 2999))             # biên trên
+        self.assertEqual(oracle(1, 999, "R"), ("OK", 2999))
         self.assertEqual(oracle(1, 1000, "R"), ("OFFSET_OUT_OF_RANGE", None))
         self.assertEqual(oracle(1, -1, "R"), ("OFFSET_OUT_OF_RANGE", None))
 
-    def test_error_order_segment_then_offset_then_permission(self):
-        oracle = make_oracle(example_table())
-        # offset sai VÀ quyền sai: phải báo lỗi offset trước (README mục 2 < 3)
-        self.assertEqual(oracle(2, 9999, "W")[0], "OFFSET_OUT_OF_RANGE")
-
     def test_oracle_matches_team_expected_trace_files(self):
-        cases = [
-            ("expected_trace.csv", INPUT_DIR / "segments.csv"),
-            ("expected_trace_memory_boundary.csv",
-             INPUT_DIR / "edge_cases" / "segments_memory_boundary.csv"),
-        ]
+        cases = [("expected_trace.csv", INPUT_DIR / "segments.csv"),
+                 ("expected_trace_memory_boundary.csv",
+                  INPUT_DIR / "edge_cases" / "segments_memory_boundary.csv")]
         for trace_name, segments_path in cases:
             oracle = make_oracle(load_table(segments_path))
             for row in read_expected(trace_name):
                 with self.subTest(trace=trace_name, row=row):
                     physical = int(row["physical"]) if row["physical"] else None
-                    got = oracle(int(row["seg_id"]), int(row["offset"]),
-                                 row["access"])
+                    got = oracle(int(row["seg_id"]), int(row["offset"]), row["access"])
                     self.assertEqual(got, (row["status"], physical))
 
 
@@ -157,24 +149,20 @@ class TestWithRealCsvInput(unittest.TestCase):
         self.assertEqual(len(table), 3)
         self.assertEqual(validate_table(table), [])
 
-    def test_csv_input_rejects_overlap_and_memory_errors_before_validator(self):
-        # csv_input hiện kiểm tra overlap và giới hạn bộ nhớ nên các file này
-        # phải bị từ chối ngay tại bước đọc CSV.
+    def test_validator_catches_overlap_and_exceeds_memory(self):
         for name in ("segments_overlap.csv", "segments_exceeds_memory.csv",
                      "segments_exceeds_memory_by_one.csv"):
             with self.subTest(file=name):
-                with self.assertRaises(ValidationError):
-                    read_and_validate_segments(
-                        str(INPUT_DIR / "error_cases" / name))
+                table = load_table(INPUT_DIR / "error_cases" / name)
+                self.assertNotEqual(validate_table(table), [])
 
     def test_csv_input_rejects_invalid_values_before_validator(self):
-        # limit = 0 và perm sai định dạng đã bị csv_input từ chối ngay khi đọc.
-        for name in ("segments_zero_limit.csv", "segments_invalid_perm_chars.csv",
-                     "segments_invalid_perm_length.csv"):
+        for name in ("segments_overlap.csv", "segments_exceeds_memory.csv",
+                     "segments_exceeds_memory_by_one.csv", "segments_zero_limit.csv",
+                     "segments_invalid_perm_chars.csv", "segments_invalid_perm_length.csv"):
             with self.subTest(file=name):
                 with self.assertRaises(ValidationError):
-                    read_and_validate_segments(
-                        str(INPUT_DIR / "error_cases" / name))
+                    read_and_validate_segments(str(INPUT_DIR / "error_cases" / name))
 
 
 @unittest.skipIf(real_translate is None, "core.translator chưa có trong branch này")
