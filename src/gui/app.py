@@ -30,7 +30,7 @@ def to_ascii_vi(text: str) -> str:
 
 
 class SegmentationApp:
-    """Giao dien Tkinter hien dai (tieng Viet khong dau)."""
+    """Giao dien Tkinter hien dai (tieng Viet khong dau, du cot BASE/LIMIT)."""
 
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
@@ -333,6 +333,13 @@ class SegmentationApp:
         except (ValueError, TypeError):
             return str(val).strip()
 
+    def _get_seg_base_limit(self, seg_id) -> tuple[str, str]:
+        """Tra cuu Base va Limit cua seg_id tu danh sach segment hien tai."""
+        for s in self.segments_data:
+            if str(s["seg_id"]) == str(seg_id):
+                return str(s["base"]), str(s["limit"])
+        return "-", "-"
+
     # ==================== DICH DIA CHI ====================
 
     def translate_selected(self) -> None:
@@ -381,6 +388,7 @@ class SegmentationApp:
             status = res.status.value if hasattr(res.status, "value") else str(res.status)
             if status == Status.OK.value:
                 ok_count += 1
+            base_val, limit_val = self._get_seg_base_limit(res.seg_id)
             reason = to_ascii_vi(res.reason) or ("Dich thanh cong" if status == Status.OK.value else "")
             tag = "ok" if status == Status.OK.value else "error"
             self.tree_summary.insert(
@@ -389,6 +397,8 @@ class SegmentationApp:
                 values=(
                     idx,
                     res.seg_id,
+                    base_val,
+                    limit_val,
                     res.offset,
                     res.access,
                     res.physical if res.physical is not None else "-",
@@ -511,13 +521,16 @@ class SegmentationApp:
         try:
             with open(selected, "w", encoding="utf-8", newline="") as f:
                 writer = csv.writer(f)
-                writer.writerow(["STT", "SEG_ID", "OFFSET", "ACCESS", "PHYSICAL", "STATUS", "REASON"])
+                writer.writerow(["STT", "SEG_ID", "BASE", "LIMIT", "OFFSET", "ACCESS", "PHYSICAL", "STATUS", "REASON"])
                 for idx, res in enumerate(self.results, start=1):
                     status = res.status.value if hasattr(res.status, "value") else str(res.status)
+                    base_val, limit_val = self._get_seg_base_limit(res.seg_id)
                     reason = to_ascii_vi(res.reason) or ("Dich thanh cong" if status == Status.OK.value else "")
                     writer.writerow([
                         idx,
                         res.seg_id,
+                        base_val,
+                        limit_val,
                         res.offset,
                         res.access,
                         res.physical if res.physical is not None else "",
