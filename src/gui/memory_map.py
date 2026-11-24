@@ -50,7 +50,8 @@ def compute_layout(table, mem_size, top=TOP_MARGIN, height=300, min_block_px=18)
                 y0 = bottom - min_block_px
         perm = str(getattr(seg, "perm", "")).strip().upper()
         color = PERM_COLORS.get(perm, OTHER_COLOR)
-        label = f"Seg {seg.seg_id} ({seg.base}-{end})"
+        # Segment giới hạn theo số byte: địa chỉ cuối hợp lệ là base + limit - 1.
+        label = f"Seg {seg.seg_id}: {seg.base}-{end - 1} (limit {seg.limit}, {perm})"
         blocks.append(
             Block(seg.seg_id, seg.base, end, y0, y1, label, color)
         )
@@ -59,7 +60,11 @@ def compute_layout(table, mem_size, top=TOP_MARGIN, height=300, min_block_px=18)
 
 def draw_memory_map(canvas, table, mem_size, highlight_addr=None,
                     fault_msg=None, issues=()):
-    canvas.update_idletasks()
+    # Tk Canvas có update_idletasks(); FakeCanvas hoặc canvas tối giản có thể không có.
+    update_idletasks = getattr(canvas, "update_idletasks", None)
+    if callable(update_idletasks):
+        update_idletasks()
+
     width = max(canvas.winfo_width(), int(float(canvas.cget("width"))))
     height = max(canvas.winfo_height(), int(float(canvas.cget("height"))))
     bar_height = max(height - TOP_MARGIN - BOTTOM_MARGIN, 80)
@@ -96,8 +101,8 @@ def draw_memory_map(canvas, table, mem_size, highlight_addr=None,
         canvas.create_rectangle(
             x0, blk.y0, x1, blk.y1,
             fill=blk.color,
-            outline="#dc2626" if bad else "#ffffff",
-            width=2 if bad else 1
+            outline="#d00000" if bad else "#ffffff",
+            width=3 if bad else 1
         )
         canvas.create_text(
             (x0 + x1) / 2, (blk.y0 + blk.y1) / 2,
@@ -120,7 +125,7 @@ def draw_memory_map(canvas, table, mem_size, highlight_addr=None,
             fill="#fee2e2", outline="#dc2626"
         )
         canvas.create_text(
-            x0 + 8, by + 14, text=f"CANH BAO: {fault_msg}",
+            x0 + 8, by + 14, text=f"CẢNH BÁO: {fault_msg}",
             anchor="w", fill="#dc2626", font=("Segoe UI", 8, "bold")
         )
 
