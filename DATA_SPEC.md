@@ -49,19 +49,13 @@ Từng dòng địa chỉ không hợp lệ vẫn được giữ đúng thứ t�
 
 ### 2.3. Kết quả `output/trace.csv`
 
-Header: `seg_id,offset,access,base,limit,physical,status,reason`.
+Header: `stt,seg_id,offset,access,base,limit,physical,status,reason`.
 
 - Mỗi địa chỉ đầu vào tạo một dòng kết quả theo đúng thứ tự.
 - `base`, `limit` để trống nếu segment không tồn tại hoặc địa chỉ `INVALID_INPUT`.
 - `physical` để trống nếu trạng thái khác `OK`.
 - Access hợp lệ được xuất theo ký tự chuẩn hóa chữ hoa.
 
-### 2.4. Kết quả `output/trace_steps.csv`
-
-Header: `address_position,seg_id,offset,access,base,limit,physical,status,reason,step,step_description,step_passed`.
-Mỗi bước dịch được ghi thành một dòng; địa chỉ `INVALID_INPUT` không đi qua các bước dịch.
-
----
 
 ## 3. Kiểu dữ liệu dùng chung
 
