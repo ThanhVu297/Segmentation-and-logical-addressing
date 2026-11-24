@@ -1,0 +1,19 @@
+﻿seg_id,offset,access,base,limit,physical,status,reason
+0,100,R,1000,400,1100,OK,
+0,0,R,1000,400,1000,OK,
+0,399,X,1000,400,1399,OK,
+0,400,R,1000,400,,OFFSET_OUT_OF_RANGE,Offset 400 nam ngoai gioi han 0 den 399
+0,200,W,1000,400,,PROTECTION_FAULT,Segment 0 khong cho phep truy cap W
+1,0,R,2000,1000,2000,OK,
+1,500,W,2000,1000,2500,OK,
+1,999,R,2000,1000,2999,OK,
+1,1000,R,2000,1000,,OFFSET_OUT_OF_RANGE,Offset 1000 nam ngoai gioi han 0 den 999
+1,1200,R,2000,1000,,OFFSET_OUT_OF_RANGE,Offset 1200 nam ngoai gioi han 0 den 999
+1,100,X,2000,1000,,PROTECTION_FAULT,Segment 1 khong cho phep truy cap X
+1,-1,R,2000,1000,,OFFSET_OUT_OF_RANGE,Offset -1 nam ngoai gioi han 0 den 999
+2,10,R,3500,500,3510,OK,
+2,10,W,3500,500,,PROTECTION_FAULT,Segment 2 khong cho phep truy cap W
+2,499,R,3500,500,3999,OK,
+2,500,R,3500,500,,OFFSET_OUT_OF_RANGE,Offset 500 nam ngoai gioi han 0 den 499
+3,10,R,,,,SEGMENT_FAULT,Khong tim thay segment 3
+5,0,R,,,,SEGMENT_FAULT,Khong tim thay segment 5

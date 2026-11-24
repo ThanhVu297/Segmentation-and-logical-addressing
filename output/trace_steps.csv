@@ -1,0 +1,72 @@
+﻿result_no,seg_id,offset,access,base,limit,physical,status,reason,step_no,step_description,step_ok
+1,0,100,R,1000,400,1100,OK,,1,Kiem tra du lieu dau vao: hop le,True
+1,0,100,R,1000,400,1100,OK,,2,"Tim thay segment 0: base=1000, limit=400, perm=R-X",True
+1,0,100,R,1000,400,1100,OK,,3,Kiem tra offset 100 voi limit 400: hop le,True
+1,0,100,R,1000,400,1100,OK,,4,Kiem tra quyen R: duoc phep,True
+1,0,100,R,1000,400,1100,OK,,5,Physical = 1000 + 100 = 1100,True
+2,0,0,R,1000,400,1000,OK,,1,Kiem tra du lieu dau vao: hop le,True
+2,0,0,R,1000,400,1000,OK,,2,"Tim thay segment 0: base=1000, limit=400, perm=R-X",True
+2,0,0,R,1000,400,1000,OK,,3,Kiem tra offset 0 voi limit 400: hop le,True
+2,0,0,R,1000,400,1000,OK,,4,Kiem tra quyen R: duoc phep,True
+2,0,0,R,1000,400,1000,OK,,5,Physical = 1000 + 0 = 1000,True
+3,0,399,X,1000,400,1399,OK,,1,Kiem tra du lieu dau vao: hop le,True
+3,0,399,X,1000,400,1399,OK,,2,"Tim thay segment 0: base=1000, limit=400, perm=R-X",True
+3,0,399,X,1000,400,1399,OK,,3,Kiem tra offset 399 voi limit 400: hop le,True
+3,0,399,X,1000,400,1399,OK,,4,Kiem tra quyen X: duoc phep,True
+3,0,399,X,1000,400,1399,OK,,5,Physical = 1000 + 399 = 1399,True
+4,0,400,R,1000,400,,OFFSET_OUT_OF_RANGE,Offset 400 nam ngoai gioi han 0 den 399,1,Kiem tra du lieu dau vao: hop le,True
+4,0,400,R,1000,400,,OFFSET_OUT_OF_RANGE,Offset 400 nam ngoai gioi han 0 den 399,2,"Tim thay segment 0: base=1000, limit=400, perm=R-X",True
+4,0,400,R,1000,400,,OFFSET_OUT_OF_RANGE,Offset 400 nam ngoai gioi han 0 den 399,3,Kiem tra offset 400 voi limit 400: loi,False
+5,0,200,W,1000,400,,PROTECTION_FAULT,Segment 0 khong cho phep truy cap W,1,Kiem tra du lieu dau vao: hop le,True
+5,0,200,W,1000,400,,PROTECTION_FAULT,Segment 0 khong cho phep truy cap W,2,"Tim thay segment 0: base=1000, limit=400, perm=R-X",True
+5,0,200,W,1000,400,,PROTECTION_FAULT,Segment 0 khong cho phep truy cap W,3,Kiem tra offset 200 voi limit 400: hop le,True
+5,0,200,W,1000,400,,PROTECTION_FAULT,Segment 0 khong cho phep truy cap W,4,Kiem tra quyen W: bi tu choi,False
+6,1,0,R,2000,1000,2000,OK,,1,Kiem tra du lieu dau vao: hop le,True
+6,1,0,R,2000,1000,2000,OK,,2,"Tim thay segment 1: base=2000, limit=1000, perm=RW-",True
+6,1,0,R,2000,1000,2000,OK,,3,Kiem tra offset 0 voi limit 1000: hop le,True
+6,1,0,R,2000,1000,2000,OK,,4,Kiem tra quyen R: duoc phep,True
+6,1,0,R,2000,1000,2000,OK,,5,Physical = 2000 + 0 = 2000,True
+7,1,500,W,2000,1000,2500,OK,,1,Kiem tra du lieu dau vao: hop le,True
+7,1,500,W,2000,1000,2500,OK,,2,"Tim thay segment 1: base=2000, limit=1000, perm=RW-",True
+7,1,500,W,2000,1000,2500,OK,,3,Kiem tra offset 500 voi limit 1000: hop le,True
+7,1,500,W,2000,1000,2500,OK,,4,Kiem tra quyen W: duoc phep,True
+7,1,500,W,2000,1000,2500,OK,,5,Physical = 2000 + 500 = 2500,True
+8,1,999,R,2000,1000,2999,OK,,1,Kiem tra du lieu dau vao: hop le,True
+8,1,999,R,2000,1000,2999,OK,,2,"Tim thay segment 1: base=2000, limit=1000, perm=RW-",True
+8,1,999,R,2000,1000,2999,OK,,3,Kiem tra offset 999 voi limit 1000: hop le,True
+8,1,999,R,2000,1000,2999,OK,,4,Kiem tra quyen R: duoc phep,True
+8,1,999,R,2000,1000,2999,OK,,5,Physical = 2000 + 999 = 2999,True
+9,1,1000,R,2000,1000,,OFFSET_OUT_OF_RANGE,Offset 1000 nam ngoai gioi han 0 den 999,1,Kiem tra du lieu dau vao: hop le,True
+9,1,1000,R,2000,1000,,OFFSET_OUT_OF_RANGE,Offset 1000 nam ngoai gioi han 0 den 999,2,"Tim thay segment 1: base=2000, limit=1000, perm=RW-",True
+9,1,1000,R,2000,1000,,OFFSET_OUT_OF_RANGE,Offset 1000 nam ngoai gioi han 0 den 999,3,Kiem tra offset 1000 voi limit 1000: loi,False
+10,1,1200,R,2000,1000,,OFFSET_OUT_OF_RANGE,Offset 1200 nam ngoai gioi han 0 den 999,1,Kiem tra du lieu dau vao: hop le,True
+10,1,1200,R,2000,1000,,OFFSET_OUT_OF_RANGE,Offset 1200 nam ngoai gioi han 0 den 999,2,"Tim thay segment 1: base=2000, limit=1000, perm=RW-",True
+10,1,1200,R,2000,1000,,OFFSET_OUT_OF_RANGE,Offset 1200 nam ngoai gioi han 0 den 999,3,Kiem tra offset 1200 voi limit 1000: loi,False
+11,1,100,X,2000,1000,,PROTECTION_FAULT,Segment 1 khong cho phep truy cap X,1,Kiem tra du lieu dau vao: hop le,True
+11,1,100,X,2000,1000,,PROTECTION_FAULT,Segment 1 khong cho phep truy cap X,2,"Tim thay segment 1: base=2000, limit=1000, perm=RW-",True
+11,1,100,X,2000,1000,,PROTECTION_FAULT,Segment 1 khong cho phep truy cap X,3,Kiem tra offset 100 voi limit 1000: hop le,True
+11,1,100,X,2000,1000,,PROTECTION_FAULT,Segment 1 khong cho phep truy cap X,4,Kiem tra quyen X: bi tu choi,False
+12,1,-1,R,2000,1000,,OFFSET_OUT_OF_RANGE,Offset -1 nam ngoai gioi han 0 den 999,1,Kiem tra du lieu dau vao: hop le,True
+12,1,-1,R,2000,1000,,OFFSET_OUT_OF_RANGE,Offset -1 nam ngoai gioi han 0 den 999,2,"Tim thay segment 1: base=2000, limit=1000, perm=RW-",True
+12,1,-1,R,2000,1000,,OFFSET_OUT_OF_RANGE,Offset -1 nam ngoai gioi han 0 den 999,3,Kiem tra offset -1 voi limit 1000: loi,False
+13,2,10,R,3500,500,3510,OK,,1,Kiem tra du lieu dau vao: hop le,True
+13,2,10,R,3500,500,3510,OK,,2,"Tim thay segment 2: base=3500, limit=500, perm=R--",True
+13,2,10,R,3500,500,3510,OK,,3,Kiem tra offset 10 voi limit 500: hop le,True
+13,2,10,R,3500,500,3510,OK,,4,Kiem tra quyen R: duoc phep,True
+13,2,10,R,3500,500,3510,OK,,5,Physical = 3500 + 10 = 3510,True
+14,2,10,W,3500,500,,PROTECTION_FAULT,Segment 2 khong cho phep truy cap W,1,Kiem tra du lieu dau vao: hop le,True
+14,2,10,W,3500,500,,PROTECTION_FAULT,Segment 2 khong cho phep truy cap W,2,"Tim thay segment 2: base=3500, limit=500, perm=R--",True
+14,2,10,W,3500,500,,PROTECTION_FAULT,Segment 2 khong cho phep truy cap W,3,Kiem tra offset 10 voi limit 500: hop le,True
+14,2,10,W,3500,500,,PROTECTION_FAULT,Segment 2 khong cho phep truy cap W,4,Kiem tra quyen W: bi tu choi,False
+15,2,499,R,3500,500,3999,OK,,1,Kiem tra du lieu dau vao: hop le,True
+15,2,499,R,3500,500,3999,OK,,2,"Tim thay segment 2: base=3500, limit=500, perm=R--",True
+15,2,499,R,3500,500,3999,OK,,3,Kiem tra offset 499 voi limit 500: hop le,True
+15,2,499,R,3500,500,3999,OK,,4,Kiem tra quyen R: duoc phep,True
+15,2,499,R,3500,500,3999,OK,,5,Physical = 3500 + 499 = 3999,True
+16,2,500,R,3500,500,,OFFSET_OUT_OF_RANGE,Offset 500 nam ngoai gioi han 0 den 499,1,Kiem tra du lieu dau vao: hop le,True
+16,2,500,R,3500,500,,OFFSET_OUT_OF_RANGE,Offset 500 nam ngoai gioi han 0 den 499,2,"Tim thay segment 2: base=3500, limit=500, perm=R--",True
+16,2,500,R,3500,500,,OFFSET_OUT_OF_RANGE,Offset 500 nam ngoai gioi han 0 den 499,3,Kiem tra offset 500 voi limit 500: loi,False
+17,3,10,R,,,,SEGMENT_FAULT,Khong tim thay segment 3,1,Kiem tra du lieu dau vao: hop le,True
+17,3,10,R,,,,SEGMENT_FAULT,Khong tim thay segment 3,2,Tim segment 3: khong tim thay,False
+18,5,0,R,,,,SEGMENT_FAULT,Khong tim thay segment 5,1,Kiem tra du lieu dau vao: hop le,True
+18,5,0,R,,,,SEGMENT_FAULT,Khong tim thay segment 5,2,Tim segment 5: khong tim thay,False

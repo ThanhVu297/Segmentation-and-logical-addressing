@@ -4,6 +4,9 @@ gui.py - Cửa sổ chính MainWindow & Menu Bar (TV4 - Trần Thị Ngọc Già
 - Không viết logic dịch địa chỉ trực tiếp trong GUI; mọi xử lý nạp/dịch/xuất đều gọi qua controller.
 """
 
+import csv
+import unicodedata
+from pathlib import Path
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 
@@ -14,6 +17,14 @@ from gui.gui_panels import (
     MemoryMapPanel,
     BatchResultPanel,
 )
+
+
+def _khong_dau(text: str) -> str:
+    if not text:
+        return ""
+    norm = unicodedata.normalize("NFD", str(text))
+    no_marks = "".join(ch for ch in norm if unicodedata.category(ch) != "Mn")
+    return unicodedata.normalize("NFC", no_marks).replace("đ", "d").replace("Đ", "D")
 
 
 def _status_text(status_obj) -> str:
@@ -44,6 +55,23 @@ def _extract_rows(source):
     return []
 
 
+def _read_csv_rows(csv_path: str) -> list[dict]:
+    path = Path(csv_path)
+    with path.open("r", encoding="utf-8-sig", newline="") as f:
+        lines = [line for line in f if line.strip() and not line.strip().lower().startswith("sep=")]
+    if not lines:
+        return []
+    sample = "".join(lines[:5])
+    delimiter = ";" if sample.count(";") > sample.count(",") else ","
+    reader = csv.DictReader(lines, delimiter=delimiter)
+    rows = []
+    for raw in reader:
+        cleaned = {str(k).strip().lower(): (str(v).strip() if v is not None else "") for k, v in raw.items() if k is not None}
+        if any(cleaned.values()):
+            rows.append(cleaned)
+    return rows
+
+
 class MainWindow(tk.Tk):
     def __init__(self, controller=None, mem_size: int = 5000):
         super().__init__()
@@ -54,12 +82,16 @@ class MainWindow(tk.Tk):
         self.controller = controller
         self.mem_size = getattr(controller, "mem_size", mem_size)
 
+        self._seg_csv_path = None
+        self._addr_csv_path = None
         self._ui_segments = []
         self._ui_addresses = []
         self._raw_results = []
         self._ui_results = []
         self._ui_steps = []
         self._step_index = -1
+        self._current_res_obj = None
+        self._highlight_addr = None
 
         self._setup_style()
         self.title("OS_MEM_12 - Segmentation và địa chỉ logic")
@@ -199,6 +231,8 @@ class MainWindow(tk.Tk):
         return bool(self.controller and getattr(self.controller, "_loaded", False))
 
     def _current_segments(self):
+        if self._ui_segments:
+            return self._ui_segments
         if self._controller_ready():
             rows = _extract_rows(getattr(self.controller, "segment_table", None))
             if rows:
@@ -206,14 +240,16 @@ class MainWindow(tk.Tk):
             df_rows = _extract_rows(getattr(self.controller, "segment_df", None))
             if df_rows:
                 return df_rows
-        return self._ui_segments
+        return []
 
     def _current_addresses(self):
+        if self._ui_addresses:
+            return self._ui_addresses
         if self._controller_ready():
             df_rows = _extract_rows(getattr(self.controller, "address_df", None))
             if df_rows:
                 return df_rows
-        return self._ui_addresses
+        return []
 
     @staticmethod
     def _to_int_if_possible(value):
@@ -228,7 +264,8 @@ class MainWindow(tk.Tk):
         access = getattr(result_obj, "access", "")
         physical = getattr(result_obj, "physical", None)
         status = _status_text(getattr(result_obj, "status", ""))
-        reason = getattr(result_obj, "reason", "") or ("Thành công" if status == "OK" else "")
+        raw_reason = getattr(result_obj, "reason", "") or ("Thanh cong" if status == "OK" else "")
+        reason = _khong_dau(raw_reason)
         return {
             "seg_id": "" if sid is None else sid,
             "offset": "" if offset is None else offset,
@@ -251,6 +288,47 @@ class MainWindow(tk.Tk):
             })
         return formatted
 
+    def _sync_highlight_for_current_step(self):
+        """Chỉ hiện gạch đỏ khi bước hiện tại đã đi tới bước có địa chỉ vật lý hợp lệ."""
+        res_obj = self._current_res_obj
+        if res_obj is None or self._step_index < 0 or not self._ui_steps:
+            self._highlight_addr = None
+            return
+
+        status = _status_text(getattr(res_obj, "status", ""))
+        phys = getattr(res_obj, "physical", None)
+        if status != "OK" or phys is None:
+            self._highlight_addr = None
+            return
+
+        is_last_step = self._step_index >= len(self._ui_steps) - 1
+        cur_desc = str(self._ui_steps[self._step_index].get("content", "")).lower()
+        has_phys_step = (str(phys) in cur_desc) or ("vật lý" in cur_desc) or ("vat ly" in cur_desc) or ("base" in cur_desc and "+" in cur_desc)
+
+        if is_last_step or has_phys_step:
+            self._highlight_addr = phys
+        else:
+            self._highlight_addr = None
+
+    def _sync_controller_table_from_ui_segments(self):
+        if not (self.controller and hasattr(self.controller, "segment_table")):
+            return
+        try:
+            from core.result_types import Segment, SegmentTable
+            table = SegmentTable(mem_size=self.mem_size)
+            for seg in self._ui_segments:
+                sid = seg.get("seg_id", seg.get("segment_id", ""))
+                base = seg.get("base", "")
+                limit = seg.get("limit", "")
+                perm = seg.get("perm", seg.get("permission", ""))
+                if sid != "" and base != "" and limit != "":
+                    table.add(Segment(seg_id=int(sid), base=int(base), limit=int(limit), perm=str(perm)))
+            self.controller.segment_table = table
+            if len(table) > 0:
+                setattr(self.controller, "_loaded", True)
+        except Exception:
+            pass
+
     def _sync_loaded_pair(self, seg_path: str, addr_path: str) -> bool:
         if not (self.controller and hasattr(self.controller, "load_files")):
             return False
@@ -264,6 +342,8 @@ class MainWindow(tk.Tk):
             self._ui_results.clear()
             self._ui_steps.clear()
             self._step_index = -1
+            self._current_res_obj = None
+            self._highlight_addr = None
             self.refresh_ui()
             return True
         except Exception as exc:
@@ -281,20 +361,37 @@ class MainWindow(tk.Tk):
         if not seg_path:
             return
 
-        if self.controller and hasattr(self.controller, "load_files"):
-            addr_path = filedialog.askopenfilename(
-                parent=self,
-                title="Chọn file CSV địa chỉ logic tương ứng (addresses.csv)",
-                filetypes=[("CSV Files", "*.csv"), ("All Files", "*.*")],
-            )
-            if addr_path and self._sync_loaded_pair(seg_path, addr_path):
-                return
-
-        messagebox.showinfo(
-            "Thông báo",
-            "Vui lòng chọn đủ cả file CSV bảng phân đoạn và file CSV địa chỉ logic để controller nạp dữ liệu.",
-            parent=self,
-        )
+        self._seg_csv_path = seg_path
+        try:
+            rows = _read_csv_rows(seg_path)
+            normalized = []
+            for r in rows:
+                sid = r.get("seg_id", r.get("segment_id", r.get("id", "")))
+                base = r.get("base", "")
+                limit = r.get("limit", "")
+                perm = r.get("perm", r.get("permission", ""))
+                normalized.append({
+                    "seg_id": sid,
+                    "segment_id": sid,
+                    "base": base,
+                    "limit": limit,
+                    "perm": perm,
+                    "permission": perm,
+                })
+            self._ui_segments = normalized
+            self._sync_controller_table_from_ui_segments()
+            if self._addr_csv_path:
+                self._sync_loaded_pair(self._seg_csv_path, self._addr_csv_path)
+            else:
+                self._raw_results.clear()
+                self._ui_results.clear()
+                self._ui_steps.clear()
+                self._step_index = -1
+                self._current_res_obj = None
+                self._highlight_addr = None
+                self.refresh_ui()
+        except Exception as exc:
+            messagebox.showerror("Lỗi đọc Segment CSV", str(exc), parent=self)
 
     def _on_load_address_csv(self):
         addr_path = filedialog.askopenfilename(
@@ -305,20 +402,33 @@ class MainWindow(tk.Tk):
         if not addr_path:
             return
 
-        if self.controller and hasattr(self.controller, "load_files"):
-            seg_path = filedialog.askopenfilename(
-                parent=self,
-                title="Chọn file CSV bảng phân đoạn tương ứng (segments.csv)",
-                filetypes=[("CSV Files", "*.csv"), ("All Files", "*.*")],
-            )
-            if seg_path and self._sync_loaded_pair(seg_path, addr_path):
-                return
-
-        messagebox.showinfo(
-            "Thông báo",
-            "Vui lòng chọn đủ cả file CSV địa chỉ logic và file CSV bảng phân đoạn để controller nạp dữ liệu.",
-            parent=self,
-        )
+        self._addr_csv_path = addr_path
+        try:
+            rows = _read_csv_rows(addr_path)
+            normalized = []
+            for r in rows:
+                sid = r.get("seg_id", r.get("segment_id", ""))
+                offset = r.get("offset", "")
+                access = r.get("access", "R")
+                normalized.append({
+                    "seg_id": sid,
+                    "segment_id": sid,
+                    "offset": offset,
+                    "access": access,
+                })
+            self._ui_addresses = normalized
+            if self._seg_csv_path:
+                self._sync_loaded_pair(self._seg_csv_path, self._addr_csv_path)
+            else:
+                self._raw_results.clear()
+                self._ui_results.clear()
+                self._ui_steps.clear()
+                self._step_index = -1
+                self._current_res_obj = None
+                self._highlight_addr = None
+                self.refresh_ui()
+        except Exception as exc:
+            messagebox.showerror("Lỗi đọc Địa chỉ CSV", str(exc), parent=self)
 
     def _on_add_segment(self, seg_id, base, limit, perm):
         if not (self.controller and hasattr(self.controller, "segment_table")):
@@ -349,11 +459,14 @@ class MainWindow(tk.Tk):
         self.refresh_ui()
 
     def _on_clear_segments(self):
+        self._seg_csv_path = None
         self._ui_segments.clear()
         self._raw_results.clear()
         self._ui_results.clear()
         self._ui_steps.clear()
         self._step_index = -1
+        self._current_res_obj = None
+        self._highlight_addr = None
         if self.controller:
             try:
                 from core.result_types import SegmentTable
@@ -365,22 +478,29 @@ class MainWindow(tk.Tk):
         self.refresh_ui()
 
     def _on_clear_addresses(self):
+        self._addr_csv_path = None
         self._ui_addresses.clear()
         self._raw_results.clear()
         self._ui_results.clear()
         self._ui_steps.clear()
         self._step_index = -1
+        self._current_res_obj = None
+        self._highlight_addr = None
         if self.controller:
             self.controller.address_df = None
         self.refresh_ui()
 
     def _on_reset_all(self):
+        self._seg_csv_path = None
+        self._addr_csv_path = None
         self._ui_segments.clear()
         self._ui_addresses.clear()
         self._raw_results.clear()
         self._ui_results.clear()
         self._ui_steps.clear()
         self._step_index = -1
+        self._current_res_obj = None
+        self._highlight_addr = None
         if self.controller:
             try:
                 from core.result_types import SegmentTable
@@ -418,11 +538,13 @@ class MainWindow(tk.Tk):
 
         try:
             res_obj = self.controller.translate_one(sid, offset, access)
+            self._current_res_obj = res_obj
             self._ui_steps = self._format_steps(res_obj)
             self._step_index = 0 if self._ui_steps else -1
             if not self._raw_results:
                 self._raw_results = [res_obj]
                 self._ui_results = [self._format_result_row(res_obj)]
+            self._sync_highlight_for_current_step()
             self.refresh_ui()
         except Exception as exc:
             messagebox.showerror("Lỗi dịch địa chỉ", str(exc), parent=self)
@@ -442,8 +564,14 @@ class MainWindow(tk.Tk):
             self._raw_results = list(res_list)
             self._ui_results = [self._format_result_row(item) for item in res_list]
             if res_list:
+                self._current_res_obj = res_list[0]
                 self._ui_steps = self._format_steps(res_list[0])
                 self._step_index = len(self._ui_steps) - 1
+            else:
+                self._current_res_obj = None
+                self._ui_steps = []
+                self._step_index = -1
+            self._sync_highlight_for_current_step()
             self.refresh_ui()
         except Exception as exc:
             messagebox.showerror("Lỗi dịch toàn bộ", str(exc), parent=self)
@@ -467,7 +595,17 @@ class MainWindow(tk.Tk):
             return
 
         self._step_index += 1
+        self._sync_highlight_for_current_step()
         self.refresh_ui()
+
+    @staticmethod
+    def _prepend_sep_to_csv(path_obj):
+        p = Path(path_obj)
+        if not p.exists():
+            return
+        content = p.read_text(encoding="utf-8-sig")
+        if not content.startswith("sep=,"):
+            p.write_text("sep=,\n" + content, encoding="utf-8-sig")
 
     def _on_export_csv(self):
         if not self._raw_results:
@@ -489,6 +627,8 @@ class MainWindow(tk.Tk):
 
         try:
             summary_path, steps_path = self.controller.export_trace(self._raw_results, filepath)
+            self._prepend_sep_to_csv(summary_path)
+            self._prepend_sep_to_csv(steps_path)
             messagebox.showinfo(
                 "Thành công",
                 f"Đã xuất kết quả:\n{summary_path}\nTrace từng bước:\n{steps_path}",
@@ -526,7 +666,7 @@ class MainWindow(tk.Tk):
         self.batch_result_panel.update_results(self._ui_results)
 
         if hasattr(self, "memory_map_panel") and hasattr(self.memory_map_panel, "update_map"):
-            self.memory_map_panel.update_map(segments, self.mem_size)
+            self.memory_map_panel.update_map(segments, self.mem_size, highlight_addr=self._highlight_addr)
 
 
 if __name__ == "__main__":

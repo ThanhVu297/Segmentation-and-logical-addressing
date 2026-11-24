@@ -1,431 +1,320 @@
-from __future__ import annotations
-
-import sys
-import tkinter as tk
+import unicodedata
 from pathlib import Path
-from tkinter import filedialog, messagebox, ttk
+from tkinter import filedialog, messagebox
 
-# Cho phép chạy bằng `python src/gui/app.py` hoặc import từ thư mục src.
-SRC_DIR = Path(__file__).resolve().parents[1]
-PROJECT_ROOT = SRC_DIR.parent
-if str(SRC_DIR) not in sys.path:
-    sys.path.insert(0, str(SRC_DIR))
-
-from core.app import SegmentationController  # noqa: E402
-from core.result_types import Status, TranslationResult  # noqa: E402
-from core.validator import validate_table  # noqa: E402
-from gui.gui_panels import create_gui_panels  # noqa: E402
-from gui.memory_map import draw_memory_map  # noqa: E402
+from core.app import SegmentationController as CoreController
 
 
-class SegmentationApp:
-    """Giao diện Tkinter gọi controller để xử lý nghiệp vụ."""
+def _khong_dau(text) -> str:
+    if not text:
+        return ""
+    norm = unicodedata.normalize("NFD", str(text))
+    no_marks = "".join(ch for ch in norm if unicodedata.category(ch) != "Mn")
+    return unicodedata.normalize("NFC", no_marks).replace("đ", "d").replace("Đ", "D")
 
-    def __init__(self, root: tk.Tk) -> None:
-        self.root = root
-        self.root.title("OS_MEM_12 - Segmentation và địa chỉ logic")
-        self.root.geometry("1100x850")
-        self.root.minsize(850, 650)
 
-        self.controller = SegmentationController()
-        self.segment_table = self.controller.segment_table
+class SegmentationController:
+    """Kết nối giao diện TV4 với Controller xử lý của Core."""
 
-        self.segment_df = None
-        self.address_df = None
-        self.segment_path: Path | None = None
-        self.address_path: Path | None = None
-        self.results: list[TranslationResult] = []
-        self.current_result_index = 0
+    def __init__(self):
+        self.core = CoreController()
+        self.segment_table = self.core.segment_table
+        self.results = []
         self.visible_step_count = 0
 
-        self.main_frame, self.tree_seg, self.tree_res = create_gui_panels(
-            parent=root,
-            cb_open_csv=self.open_csv_files,
-            cb_translate=self.translate_manual,
-            cb_next_step=self.show_next_step,
-            cb_export=self.export_trace,
-        )
-        self.main_frame.pack(fill="both", expand=True)
+    # ==================== MỞ HAI FILE CSV ====================
 
-        controls = ttk.Frame(root, padding=(10, 0, 10, 4))
-        controls.pack(fill="x")
+    def handle_open_csv(self, window):
 
-        self.batch_button = ttk.Button(
-            controls,
-            text="Dịch toàn bộ addresses.csv",
-            command=self.translate_batch,
-        )
-        self.batch_button.pack(side="left")
-
-        self.data_status = ttk.Label(controls, text="Chưa tải dữ liệu CSV")
-        self.data_status.pack(side="left", padx=12)
-
-        summary_frame = ttk.LabelFrame(root, text="Kết quả tổng hợp", padding=6)
-        summary_frame.pack(fill="x", padx=10, pady=(0, 6))
-
-        summary_columns = (
-            "seg_id",
-            "offset",
-            "access",
-            "physical",
-            "status",
-            "reason",
-        )
-        self.tree_summary = ttk.Treeview(
-            summary_frame,
-            columns=summary_columns,
-            show="headings",
-            height=5,
-        )
-
-        for column, title, width in (
-            ("seg_id", "SEG_ID", 75),
-            ("offset", "OFFSET", 85),
-            ("access", "ACCESS", 75),
-            ("physical", "PHYSICAL", 90),
-            ("status", "STATUS", 190),
-            ("reason", "REASON", 430),
-        ):
-            self.tree_summary.heading(column, text=title)
-            self.tree_summary.column(
-                column,
-                width=width,
-                anchor="w" if column == "reason" else "center",
-            )
-
-        self.tree_summary.pack(fill="x", expand=True)
-
-        self.canvas = tk.Canvas(
-            root,
-            width=900,
-            height=300,
-            bg="white",
-            highlightthickness=1,
-        )
-        self.canvas.pack(fill="both", expand=True, padx=10, pady=(0, 10))
-        self.root.after_idle(self.redraw_memory_map)
-
-    def open_csv_files(self) -> None:
-        """Cho người dùng chọn CSV rồi nhờ controller nạp và kiểm tra dữ liệu."""
-        csv_types = [("CSV files", "*.csv"), ("All files", "*.*")]
-
-        segments_name = filedialog.askopenfilename(
-            parent=self.root,
+        segments_path = filedialog.askopenfilename(
+            parent=window,
             title="Chọn segments.csv",
-            filetypes=csv_types,
-            initialdir=str(PROJECT_ROOT / "input"),
+            filetypes=[("CSV Files", "*.csv")]
         )
-        if not segments_name:
+
+        if not segments_path:
             return
 
-        addresses_name = filedialog.askopenfilename(
-            parent=self.root,
+        addresses_path = filedialog.askopenfilename(
+            parent=window,
             title="Chọn addresses.csv",
-            filetypes=csv_types,
-            initialdir=str(Path(segments_name).parent),
+            filetypes=[("CSV Files", "*.csv")]
         )
-        if not addresses_name:
+
+        if not addresses_path:
             return
 
         try:
-            segment_df, address_df = self.controller.load_files(
-                segments_name,
-                addresses_name,
+            segment_df, address_df = self.core.load_files(
+                segments_path,
+                addresses_path
             )
+
             if address_df.empty:
-                raise ValueError("addresses.csv không có dòng địa chỉ nào để xử lý.")
+                raise ValueError(
+                    "addresses.csv không có dữ liệu."
+                )
+
         except Exception as exc:
             messagebox.showerror(
-                "Không tải được dữ liệu",
+                "Lỗi CSV",
                 str(exc),
-                parent=self.root,
+                parent=window
             )
             return
 
-        self.segment_df = segment_df
-        self.address_df = address_df
-        self.segment_table = self.controller.segment_table
-        self.segment_path = Path(segments_name)
-        self.address_path = Path(addresses_name)
-
-        self.results.clear()
-        self.current_result_index = 0
+        self.segment_table = self.core.segment_table
+        self.results = []
         self.visible_step_count = 0
 
-        self._refresh_segment_table()
-        self._clear_result_table()
-        self._refresh_summary_table()
+        # Hiển thị Segment Table
+        for item in window.tree_seg.get_children():
+            window.tree_seg.delete(item)
 
-        self.data_status.configure(
-            text=f"Đã tải {len(segment_df)} segment, {len(address_df)} địa chỉ"
-        )
-        self.redraw_memory_map()
-
-        messagebox.showinfo(
-            "Đã tải dữ liệu",
-            "Hai file CSV đã được tải và kiểm tra.",
-            parent=self.root,
-        )
-
-    def _refresh_segment_table(self) -> None:
-        for item in self.tree_seg.get_children():
-            self.tree_seg.delete(item)
-
-        if self.segment_df is None:
-            return
-
-        for row in self.segment_df.itertuples(index=False):
-            self.tree_seg.insert(
+        for row in segment_df.itertuples(index=False):
+            window.tree_seg.insert(
                 "",
                 "end",
-                values=(row.seg_id, row.base, row.limit, row.perm),
+                values=(
+                    row.seg_id,
+                    row.base,
+                    row.limit,
+                    row.perm
+                )
             )
 
-    def _clear_result_table(self) -> None:
-        for item in self.tree_res.get_children():
-            self.tree_res.delete(item)
+        # Xóa kết quả cũ
+        self._clear_results(window)
 
-    def translate_manual(
-        self,
-        seg_id_text: str,
-        offset_text: str,
-        access_text: str,
-    ) -> None:
-        """Dịch địa chỉ do người dùng nhập trên giao diện."""
+        # Cập nhật bản đồ bộ nhớ
+        window.update_memory_map(self.segment_table)
+
+        messagebox.showinfo(
+            "Thành công",
+            f"Đã tải {len(segment_df)} segment "
+            f"và {len(address_df)} địa chỉ.",
+            parent=window
+        )
+
+    # ==================== DỊCH MỘT ĐỊA CHỈ ====================
+
+    def handle_translate(self, seg, offset, access, window):
+
         if len(self.segment_table) == 0:
             messagebox.showwarning(
                 "Chưa có dữ liệu",
-                "Hãy tải segments.csv trước.",
-                parent=self.root,
-            )
-            return
-
-        seg_id = self._parse_integer_or_original(seg_id_text)
-        offset = self._parse_integer_or_original(offset_text)
-
-        result = self.controller.translate_one(
-            seg_id,
-            offset,
-            access_text.strip().upper(),
-        )
-        self._set_results([result])
-
-    @staticmethod
-    def _parse_integer_or_original(value: str):
-        """Đổi chuỗi thành số nguyên; giữ nguyên chuỗi sai để controller báo lỗi."""
-        try:
-            return int(value.strip())
-        except (AttributeError, ValueError):
-            return value
-
-    def translate_batch(self) -> None:
-        """Nhờ controller dịch toàn bộ các dòng đã nạp từ addresses.csv."""
-        if self.address_df is None or self.segment_df is None:
-            messagebox.showwarning(
-                "Chưa có dữ liệu",
                 "Hãy mở hai file CSV trước.",
-                parent=self.root,
+                parent=window
             )
             return
 
         try:
-            results = self.controller.translate_batch()
-        except (RuntimeError, ValueError) as exc:
-            messagebox.showerror(
-                "Không dịch được dữ liệu",
-                str(exc),
-                parent=self.root,
-            )
-            return
+            seg_id = int(seg.strip())
+            offset_value = int(offset.strip())
 
-        self._set_results(results)
-        self.data_status.configure(text=f"Đã dịch {len(results)} địa chỉ")
-
-    def _set_results(self, results: list[TranslationResult]) -> None:
-        self.results = results
-        self.current_result_index = 0
-        self.visible_step_count = 0
-        self._refresh_summary_table()
-
-        if not results:
-            self._clear_result_table()
-            return
-
-        self._render_current_result()
-
-    def _refresh_summary_table(self) -> None:
-        for item in self.tree_summary.get_children():
-            self.tree_summary.delete(item)
-
-        for result in self.results:
-            status = (
-                result.status.value
-                if hasattr(result.status, "value")
-                else result.status
-            )
-            reason = result.reason or (
-                "Dịch thành công" if status == Status.OK.value else ""
+            result = self.core.translate_one(
+                seg_id,
+                offset_value,
+                access.strip().upper()
             )
 
-            self.tree_summary.insert(
-                "",
-                "end",
-                values=(
-                    result.seg_id,
-                    result.offset,
-                    result.access,
-                    result.physical if result.physical is not None else "",
-                    status,
-                    reason,
-                ),
-            )
-
-    def show_next_step(self) -> None:
-        """Hiện bước tiếp theo, sau đó chuyển sang địa chỉ kế tiếp."""
-        if not self.results:
-            messagebox.showinfo(
-                "Chưa có kết quả",
-                "Hãy dịch một địa chỉ hoặc dịch CSV trước.",
-                parent=self.root,
-            )
-            return
-
-        current = self.results[self.current_result_index]
-
-        if self.visible_step_count < len(current.steps):
-            self.visible_step_count += 1
-        elif self.current_result_index + 1 < len(self.results):
-            self.current_result_index += 1
+            self.results = [result]
             self.visible_step_count = min(
                 1,
-                len(self.results[self.current_result_index].steps),
+                len(result.steps)
             )
-        else:
+
+            self._display_result(window)
+
+        except (ValueError, TypeError, RuntimeError) as exc:
+            messagebox.showerror(
+                "Lỗi dịch địa chỉ",
+                str(exc),
+                parent=window
+            )
+
+    # ==================== DỊCH TOÀN BỘ CSV ====================
+
+    def handle_translate_batch(self, window):
+
+        try:
+            results = self.core.translate_batch()
+
+            self.results = results
+            self.visible_step_count = min(
+                1,
+                len(results[0].steps) if results else 0
+            )
+
+            self._display_result(window)
+
             messagebox.showinfo(
-                "Hoàn tất",
-                "Đã xem hết các bước và địa chỉ.",
-                parent=self.root,
+                "Hoàn thành",
+                f"Đã xử lý {len(results)} địa chỉ.",
+                parent=window
             )
+
+        except (ValueError, RuntimeError) as exc:
+            messagebox.showerror(
+                "Lỗi xử lý",
+                str(exc),
+                parent=window
+            )
+
+    # ==================== HIỂN THỊ KẾT QUẢ ====================
+
+    def _clear_results(self, window):
+
+        for item in window.tree_res.get_children():
+            window.tree_res.delete(item)
+
+    def _display_result(self, window):
+
+        self._clear_results(window)
+
+        if not self.results:
             return
 
-        self._render_current_result()
-
-    def _render_current_result(self) -> None:
-        result = self.results[self.current_result_index]
-        self._clear_result_table()
+        result = self.results[0]
 
         for index, step in enumerate(
-            result.steps[: self.visible_step_count],
-            start=1,
+            result.steps[:self.visible_step_count],
+            start=1
         ):
-            tag = "ok" if step.ok else "error"
-            self.tree_res.insert(
+            window.tree_res.insert(
                 "",
                 "end",
                 values=(
-                    index,
+                    f"Bước {index}",
                     step.description,
-                    "Hợp lệ" if step.ok else "Lỗi",
+                    "Hợp lệ" if step.ok else "Lỗi"
                 ),
-                tags=(tag,),
+                tags=(
+                    "ok" if step.ok else "error",
+                )
             )
 
         if self.visible_step_count >= len(result.steps):
-            status = (
-                result.status.value
-                if hasattr(result.status, "value")
-                else str(result.status)
-            )
-            tag = "ok" if status == Status.OK.value else "error"
 
-            self.tree_res.insert(
+            status = result.status.value
+
+            reason = _khong_dau(result.reason) or status
+
+            if result.physical is not None:
+                reason += (
+                    f" | Dia chi vat ly: {result.physical}"
+                )
+
+            window.tree_res.insert(
                 "",
                 "end",
                 values=(
                     "KẾT LUẬN",
-                    result.reason or "Dịch thành công",
-                    status,
+                    reason,
+                    status
                 ),
-                tags=(tag,),
+                tags=(
+                    "ok" if status == "OK" else "error",
+                )
             )
 
-        if result.status == Status.OK:
-            self.redraw_memory_map(highlight_addr=result.physical)
+        if result.status.value == "OK":
+            window.update_memory_map(
+                self.segment_table,
+                highlight_addr=result.physical
+            )
         else:
-            status = (
-                result.status.value
-                if hasattr(result.status, "value")
-                else str(result.status)
-            )
-            self.redraw_memory_map(
-                fault_msg=result.reason or status,
+            window.update_memory_map(
+                self.segment_table,
+                fault_msg=_khong_dau(result.reason) or result.status.value
             )
 
-    def redraw_memory_map(self, highlight_addr=None, fault_msg=None) -> None:
-        """Vẽ sơ đồ bộ nhớ; phần vẽ vẫn thuộc giao diện."""
-        if not hasattr(self, "canvas"):
-            return
+    # ==================== BƯỚC TIẾP THEO ====================
 
-        issues = validate_table(self.segment_table)
-        draw_memory_map(
-            self.canvas,
-            self.segment_table,
-            self.segment_table.mem_size,
-            highlight_addr=highlight_addr,
-            fault_msg=fault_msg,
-            issues=issues,
-        )
+    def handle_next_step(self, window):
 
-    def export_trace(self) -> None:
-        """Chọn vị trí lưu trên GUI, rồi nhờ controller xuất các file trace."""
         if not self.results:
             messagebox.showinfo(
-                "Chưa có kết quả",
-                "Chưa có kết quả nào để xuất.",
-                parent=self.root,
+                "Thông báo",
+                "Hãy dịch địa chỉ trước.",
+                parent=window
             )
             return
 
-        default_path = PROJECT_ROOT / "output" / "trace.csv"
-        selected = filedialog.asksaveasfilename(
-            parent=self.root,
-            title="Xuất trace.csv",
-            initialdir=str(default_path.parent),
-            initialfile=default_path.name,
+        result = self.results[0]
+
+        if self.visible_step_count < len(result.steps):
+
+            self.visible_step_count += 1
+            self._display_result(window)
+
+        else:
+            messagebox.showinfo(
+                "Hoàn tất",
+                "Đã hiển thị hết các bước.",
+                parent=window
+            )
+
+    # ==================== XUẤT KẾT QUẢ CSV ====================
+
+    @staticmethod
+    def _prepend_sep_to_csv(path_obj):
+        p = Path(path_obj)
+        if not p.exists():
+            return
+        content = p.read_text(encoding="utf-8-sig")
+        if not content.startswith("sep=,"):
+            p.write_text("sep=,\n" + content, encoding="utf-8-sig")
+
+    def handle_export_results(self, window):
+
+        if not self.results:
+            messagebox.showinfo(
+                "Thông báo",
+                "Chưa có kết quả để xuất.",
+                parent=window
+            )
+            return
+
+        filepath = filedialog.asksaveasfilename(
+            parent=window,
+            title="Xuất kết quả",
             defaultextension=".csv",
-            filetypes=[("CSV files", "*.csv")],
+            initialfile="trace.csv",
+            filetypes=[("CSV Files", "*.csv")]
         )
-        if not selected:
+
+        if not filepath:
             return
 
         try:
-            summary_path, steps_path = self.controller.export_trace(
+            summary_path = self.core.export_trace(
                 self.results,
-                selected,
+                filepath
             )
-        except (OSError, ValueError) as exc:
+
+            if isinstance(summary_path, tuple):
+                summary_path, steps_path = summary_path
+            else:
+                summary_path = Path(summary_path)
+                steps_path = summary_path.with_name(
+                    f"{summary_path.stem}_steps.csv"
+                )
+
+            self._prepend_sep_to_csv(summary_path)
+            self._prepend_sep_to_csv(steps_path)
+
+        except (OSError, ValueError, RuntimeError) as exc:
             messagebox.showerror(
-                "Không xuất được CSV",
+                "Lỗi xuất file",
                 str(exc),
-                parent=self.root,
+                parent=window
             )
             return
 
         messagebox.showinfo(
-            "Đã xuất kết quả",
-            f"Đã ghi {len(self.results)} kết quả:\n"
-            f"{summary_path}\n"
-            f"Trace từng bước:\n{steps_path}",
-            parent=self.root,
+            "Xuất thành công",
+            f"Đã xuất kết quả:\n"
+            f"{summary_path}\n{steps_path}",
+            parent=window
         )
-
-
-def run_app() -> None:
-    """Tạo và chạy ứng dụng Tkinter."""
-    root = tk.Tk()
-    SegmentationApp(root)
-    root.mainloop()
-
-
-if __name__ == "__main__":
-    run_app()

@@ -5,9 +5,18 @@ gui_panels.py - Các panel giao diện Tkinter thành phần (TV4 - Trần Thị
 - Có sẵn create_gui_panels() để tương thích khi chạy qua gui.app.
 """
 
+import unicodedata
 import tkinter as tk
 from tkinter import ttk, messagebox
 from typing import Callable, List, Dict, Any
+
+
+def _khong_dau(text: str) -> str:
+    if not text:
+        return ""
+    norm = unicodedata.normalize("NFD", str(text))
+    no_marks = "".join(ch for ch in norm if unicodedata.category(ch) != "Mn")
+    return unicodedata.normalize("NFC", no_marks).replace("đ", "d").replace("Đ", "D")
 
 
 class SegmentPanel(ttk.LabelFrame):
@@ -358,6 +367,8 @@ class MemoryMapPanel(ttk.LabelFrame):
     def __init__(self, parent, mem_size: int = 5000):
         super().__init__(parent, text=f"4. MEMORY MAP - SƠ ĐỒ BỘ NHỚ ({mem_size} BYTE)", padding=8)
         self.mem_size = mem_size
+        self._segments = None
+        self._highlight_addr = None
         self._build_ui()
 
     def _build_ui(self):
@@ -372,7 +383,7 @@ class MemoryMapPanel(ttk.LabelFrame):
 
         self.canvas = tk.Canvas(self.canvas_frame, bg="#ffffff", highlightthickness=1, highlightbackground="#ced4da")
         self.canvas.pack(fill=tk.BOTH, expand=True)
-        self.canvas.bind("<Configure>", self._draw_map)
+        self.canvas.bind("<Configure>", self._on_resize)
 
         legend_frame = ttk.Frame(self)
         legend_frame.pack(fill=tk.X, pady=(2, 4))
@@ -411,19 +422,24 @@ class MemoryMapPanel(ttk.LabelFrame):
         )
         self.lbl_status.pack(fill=tk.X)
 
-    def _draw_map(self, event=None, segments=None):
+    def _on_resize(self, event=None):
+        self._draw_map(segments=self._segments, highlight_addr=self._highlight_addr)
+
+    def _draw_map(self, event=None, segments=None, highlight_addr=None):
         self.canvas.delete("all")
         w = self.canvas.winfo_width()
         h = self.canvas.winfo_height()
-        if w < 10 or h < 10:
+        if w < 10 or h < 10 or self.mem_size <= 0:
             return
 
-        margin_left, margin_right, margin_top, margin_bottom = 50, 30, 25, 25
+        margin_left, margin_right, margin_top, margin_bottom = 50, 50, 25, 25
         rect_x1, rect_y1 = margin_left, margin_top
         rect_x2, rect_y2 = w - margin_right, h - margin_bottom
 
         if rect_x2 <= rect_x1 or rect_y2 <= rect_y1:
             return
+
+        total_height = rect_y2 - rect_y1
 
         self.canvas.create_text((rect_x1 + rect_x2) / 2, rect_y1 - 10, text=f"Bộ nhớ vật lý ({self.mem_size} byte)", font=("Segoe UI", 8, "bold"), fill="#475569")
         self.canvas.create_rectangle(rect_x1, rect_y1, rect_x2, rect_y2, outline="#94a3b8", width=1, fill="#ffffff")
@@ -433,38 +449,57 @@ class MemoryMapPanel(ttk.LabelFrame):
         if not segments:
             self.canvas.create_text((rect_x1 + rect_x2) / 2, (rect_y1 + rect_y2) / 2, text=f"Free (0-{self.mem_size})", font=("Segoe UI", 9), fill="#94a3b8")
             self.lbl_status.config(text=f"TRẠNG THÁI: Bộ nhớ đang trống (Free 0 - {self.mem_size} byte). Hãy thêm Segment ở Bảng 1.")
-            return
+        else:
+            color_map = {"R-X": "#3b82f6", "RW-": "#f59e0b", "R--": "#10b981", "RWX": "#8b5cf6"}
 
-        color_map = {"R-X": "#3b82f6", "RW-": "#f59e0b", "R--": "#10b981", "RWX": "#8b5cf6"}
-        total_height = rect_y2 - rect_y1
+            for seg in segments:
+                try:
+                    if isinstance(seg, dict):
+                        base = int(seg.get("base", seg.get("Base", 0)))
+                        limit = int(seg.get("limit", seg.get("Limit", 0)))
+                        perm = str(seg.get("permission", seg.get("perm", seg.get("Permission", "")))).upper()
+                        seg_id = str(seg.get("segment_id", seg.get("seg_id", seg.get("Segment ID", ""))))
+                    else:
+                        continue
 
-        for seg in segments:
-            try:
-                if isinstance(seg, dict):
-                    base = int(seg.get("base", seg.get("Base", 0)))
-                    limit = int(seg.get("limit", seg.get("Limit", 0)))
-                    perm = str(seg.get("permission", seg.get("perm", seg.get("Permission", "")))).upper()
-                    seg_id = str(seg.get("segment_id", seg.get("seg_id", seg.get("Segment ID", ""))))
-                else:
+                    y_start = rect_y1 + (base / self.mem_size) * total_height
+                    y_end = rect_y1 + ((base + limit) / self.mem_size) * total_height
+
+                    fill_color = color_map.get(perm, "#9ca3af")
+                    self.canvas.create_rectangle(rect_x1, y_start, rect_x2, y_end, fill=fill_color, outline="#1e293b", width=1)
+                    self.canvas.create_text((rect_x1 + rect_x2) / 2, (y_start + y_end) / 2, text=f"Seg {seg_id} ({base}-{base+limit})", font=("Segoe UI", 8, "bold"), fill="#ffffff")
+                except (ValueError, TypeError):
                     continue
 
-                y_start = rect_y1 + (base / self.mem_size) * total_height
-                y_end = rect_y1 + ((base + limit) / self.mem_size) * total_height
+            self.lbl_status.config(text=f"TRẠNG THÁI: Đã nạp {len(segments)} Segment vào bộ nhớ vật lý.")
 
-                fill_color = color_map.get(perm, "#9ca3af")
-                self.canvas.create_rectangle(rect_x1, y_start, rect_x2, y_end, fill=fill_color, outline="#1e293b", width=1)
-                self.canvas.create_text((rect_x1 + rect_x2) / 2, (y_start + y_end) / 2, text=f"Seg {seg_id} ({base}-{base+limit})", font=("Segoe UI", 8, "bold"), fill="#ffffff")
+        if highlight_addr is not None and highlight_addr != "-":
+            try:
+                addr_val = float(str(highlight_addr).strip())
+                clamped = max(0.0, min(float(self.mem_size), addr_val))
+                y_addr = rect_y1 + (clamped / self.mem_size) * total_height
+                label_val = str(int(addr_val)) if addr_val.is_integer() else str(addr_val)
+
+                self.canvas.create_line(
+                    rect_x1 - 4, y_addr, rect_x2 + 10, y_addr,
+                    fill="#dc2626", width=2
+                )
+                self.canvas.create_text(
+                    rect_x2 + 13, y_addr,
+                    text=label_val,
+                    font=("Segoe UI", 8, "bold"), fill="#dc2626", anchor="w"
+                )
             except (ValueError, TypeError):
-                continue
+                pass
 
-        self.lbl_status.config(text=f"TRẠNG THÁI: Đã nạp {len(segments)} Segment vào bộ nhớ vật lý.")
-
-    def update_map(self, segments=None, mem_size=5000):
+    def update_map(self, segments=None, mem_size=5000, highlight_addr=None):
+        self._segments = segments
+        self._highlight_addr = highlight_addr
         if mem_size != self.mem_size:
             self.mem_size = mem_size
             self.lbl_top_right.config(text=f"0 - {self.mem_size} byte")
             self.config(text=f"4. MEMORY MAP - SƠ ĐỒ BỘ NHỚ ({self.mem_size} BYTE)")
-        self._draw_map(segments=segments)
+        self._draw_map(segments=segments, highlight_addr=highlight_addr)
 
 
 class BatchResultPanel(ttk.LabelFrame):
@@ -540,7 +575,7 @@ class BatchResultPanel(ttk.LabelFrame):
                     access = res.get("access", res.get("ACCESS", ""))
                     physical = res.get("physical_address", res.get("physical", res.get("PHYSICAL", "-")))
                     status = str(res.get("status", res.get("STATUS", ""))).upper()
-                    reason = res.get("reason", res.get("REASON", ""))
+                    reason = _khong_dau(res.get("reason", res.get("REASON", "")))
                 else:
                     sid, offset, access, physical, status, reason = "", "", "", "-", "OK", ""
 
