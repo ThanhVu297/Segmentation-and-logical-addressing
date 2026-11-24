@@ -3,9 +3,15 @@ from .result_types import ACCESS_TYPES, FaultResult, Status
 
 def check_permission(perm: object, access: object) -> bool:
     """Kiểm tra quyền theo định dạng [R-][W-][X-]."""
-    if not isinstance(perm, str) or len(perm) != len(ACCESS_TYPES):
+    if not isinstance(perm, str) or not isinstance(access, str):
         return False
-    if not isinstance(access, str) or access not in ACCESS_TYPES:
+
+    perm = perm.strip().upper()
+    access = access.strip().upper()
+
+    if len(perm) != len(ACCESS_TYPES):
+        return False
+    if access not in ACCESS_TYPES:
         return False
     if any(char not in (expected, "-")
            for char, expected in zip(perm, ACCESS_TYPES)):

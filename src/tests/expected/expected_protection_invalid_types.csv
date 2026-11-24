@@ -1,0 +1,9 @@
+case,offset,limit,expected_status
+none_offset,none,int,INVALID_INPUT
+string_offset,string,int,INVALID_INPUT
+bool_offset,bool,int,INVALID_INPUT
+float_offset,float,int,INVALID_INPUT
+none_limit,int,none,INVALID_INPUT
+string_limit,int,string,INVALID_INPUT
+bool_limit,int,bool,INVALID_INPUT
+float_limit,int,float,INVALID_INPUT

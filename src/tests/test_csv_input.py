@@ -24,7 +24,7 @@ class TestCsvInput(unittest.TestCase):
 
             with self.assertRaises(ValidationError):
                 read_and_validate_segments(path)
-                
+
     def test_segment_exceeds_memory_is_rejected_with_line_number(self):
         content = (
             "seg_id,base,limit,perm\n"
@@ -54,9 +54,9 @@ class TestCsvInput(unittest.TestCase):
 
         message = str(context.exception)
         self.assertIn("Dòng 3", message)
-        self.assertIn("Dòng 2", message)
+        self.assertIn("dòng 2", message)
         self.assertIn("chồng lấn", message)
-        
+
     def test_segments_with_header_but_no_rows_are_rejected(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             path = self.write_temp_csv(

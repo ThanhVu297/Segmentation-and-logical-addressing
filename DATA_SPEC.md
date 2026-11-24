@@ -3,178 +3,148 @@
 
 ---
 
-## 1. Bộ nhớ vật lý & Giả định hệ thống
-* **Kích thước bộ nhớ mặc định:** `5000` byte (địa chỉ vật lý hợp lệ từ `0` đến `4999`).
-* **Không gian phân đoạn:** Mỗi segment chiếm một vùng nhớ liên tục `[base, base + limit - 1]`.
-* **Tính tái lập:** Để tái lập kết quả, sử dụng đúng cặp CSV đầu vào cùng phiên bản đặc tả này.
+## 1. Bộ nhớ vật lý & giả định hệ thống
+
+- Kích thước bộ nhớ mặc định: `5000` byte, địa chỉ vật lý hợp lệ từ `0` đến `4999`.
+- Mỗi segment chiếm vùng nửa mở `[base, base + limit)`, tương ứng các địa chỉ byte từ `base` đến `base + limit - 1`.
+- Các segment không được chồng lấn; segment liền kề được phép.
+- Dữ liệu chuẩn để chạy ứng dụng là `input/segments.csv` cùng `input/addresses.csv`.
 
 ---
 
-## 2. Định dạng các file dữ liệu (CSV)
+## 2. Định dạng các file CSV
 
 ### 2.0. Quy tắc đọc file chung
-* Mã hóa **UTF-8**. Dòng đầu tiên là dòng tiêu đề (tên cột), phân biệt chữ hoa/thường và phải đúng thứ tự.
-* Tiêu đề phải khớp chính xác danh sách cột, không thừa hoặc thiếu cột.
-* Tự động loại bỏ khoảng trắng ở đầu/cuối mỗi ô trước khi kiểm tra; bỏ qua các dòng trống.
-* Dòng có số ô khác số cột tiêu đề bị coi là sai định dạng.
 
-### 2.1. File `input/segments.csv` (Segment Table)
-Cấu trúc cột: `seg_id,base,limit,perm`
+- Mã hóa UTF-8 (có thể có BOM). Dòng đầu là header, tên cột phân biệt hoa/thường và phải đúng thứ tự.
+- Loại bỏ khoảng trắng ở đầu/cuối ô khi kiểm tra; bỏ qua dòng trống hoàn toàn.
+- Dòng có số ô khác số cột header bị coi là sai định dạng.
 
-| Cột | Kiểu dữ liệu | Ràng buộc dữ liệu |
-| :--- | :--- | :--- |
-| `seg_id` | Số nguyên `>= 0` | Định danh phân đoạn, duy nhất trong file. |
-| `base` | Số nguyên `>= 0` | Địa chỉ vật lý bắt đầu của segment. |
-| `limit` | Số nguyên `> 0` | Kích thước segment (byte). |
-| `perm` | Chuỗi 3 ký tự | Vị trí 1: `R` hoặc `-`; Vị trí 2: `W` hoặc `-`; Vị trí 3: `X` hoặc `-`. |
+### 2.1. `input/segments.csv` — Segment Table
 
-* **Ràng buộc toàn bảng:**
-  * Mỗi segment thỏa mãn `base + limit <= 5000`.
-  * Các segment không được chồng lấn nhau (overlap). Hai segment liền kề nhau (Segment A kết thúc tại `base + limit - 1`, Segment B bắt đầu tại `base + limit`) là **hợp lệ**.
+Header chính xác: `seg_id,base,limit,perm`.
 
-### 2.2. File `input/addresses.csv` (Danh sách địa chỉ logic)
-Cấu trúc cột: `seg_id,offset,access`
+| Cột | Kiểu dữ liệu | Quy tắc |
+|---|---|---|
+| `seg_id` | Số nguyên | `>= 0`, duy nhất trong file. |
+| `base` | Số nguyên | `>= 0`. |
+| `limit` | Số nguyên | `> 0`. |
+| `perm` | Chuỗi 3 ký tự | Vị trí 1 là `R` hoặc `-`, vị trí 2 là `W` hoặc `-`, vị trí 3 là `X` hoặc `-`. |
 
-| Cột | Kiểu dữ liệu | Ràng buộc dữ liệu |
-| :--- | :--- | :--- |
-| `seg_id` | Số nguyên | Không phải số nguyên $\rightarrow$ `INVALID_INPUT`. Là số nguyên nhưng không có trong bảng $\rightarrow$ `SEGMENT_FAULT`. |
-| `offset` | Số nguyên | Có thể âm hoặc vượt `limit` (xử lý ở bước dịch: `OFFSET_OUT_OF_RANGE`). Không phải số hoặc để trống $\rightarrow$ `INVALID_INPUT`. |
-| `access` | Ký tự | Nhận một trong ba ký tự R, W, X, không phân biệt chữ hoa/chữ thường. Trước khi kiểm tra quyền, chương trình chuẩn hóa giá trị thành chữ hoa (r → R, w → W, x → X). Ký tự khác $\rightarrow$ `INVALID_INPUT`. |
+`csv_input.py` chuẩn hóa `perm` thành chữ hoa trước khi kiểm tra và trả về DataFrame. Vì vậy `r-x`, `rW-` được chấp nhận và chuẩn hóa lần lượt thành `R-X`, `RW-`. Các ký tự vẫn phải đúng vị trí sau chuẩn hóa.
 
-* **Trường hợp file chỉ có dòng tiêu đề (0 dòng dữ liệu):**
-  * `segments.csv`: Bị từ chối (bảng segment rỗng).
-  * `addresses.csv`: Hợp lệ; xuất `trace.csv` chỉ có tiêu đề và hiển thị thông báo `"Không có địa chỉ để dịch"`.
+Điều kiện toàn bảng: `base + limit <= 5000`, không trùng ID và không chồng lấn. File rỗng hoặc chỉ có header bị từ chối.
 
-### 2.3. File `output/trace.csv` (Kết quả tổng hợp)
-Cấu trúc cột: `seg_id,offset,access,base,limit,physical,status,reason`
+### 2.2. `input/addresses.csv` — Danh sách địa chỉ logic
 
-* Xuất đúng 1 dòng cho mỗi địa chỉ trong `addresses.csv` theo đúng thứ tự.
-* Để trống `base`, `limit` nếu `seg_id` không tồn tại hoặc dòng lỗi `INVALID_INPUT`.
-* Để trống `physical` nếu `status` khác `OK`.
-* Dòng `INVALID_INPUT` giữ nguyên chuỗi gốc ở 3 cột `seg_id`, `offset`, `access`.
-* Cột `reason` để trống khi `OK`; khi lỗi ghi lý do ngắn gọn, **tuyệt đối không chứa dấu phẩy (`,`)**.
-* *Ví dụ OK:* `0,100,R,1000,400,1100,OK,`
-* *Ví dụ lỗi:* `0,400,R,1000,400,,OFFSET_OUT_OF_RANGE,Offset vuot qua limit`
+Header chính xác: `seg_id,offset,access`.
 
-### 2.4. File `output/trace_steps.csv` (Truy vết chi tiết từng bước)
-Cấu trúc cột: `address_position,seg_id,offset,access,base,limit,physical,status,reason,step,step_description,step_passed`
+| Cột | Kiểu dữ liệu | Quy tắc |
+|---|---|---|
+| `seg_id` | Số nguyên | Không phải số nguyên → `INVALID_INPUT`; số nguyên không có trong bảng → `SEGMENT_FAULT`. |
+| `offset` | Số nguyên | Có thể âm hoặc lớn hơn/ bằng limit; các giá trị này được dịch thành `OFFSET_OUT_OF_RANGE`. Không phải số hoặc để trống → `INVALID_INPUT`. |
+| `access` | Ký tự | Chấp nhận `R`, `W`, `X`, không phân biệt hoa/thường. `r/w/x` được chuẩn hóa thành `R/W/X`; ký tự khác hoặc để trống → `INVALID_INPUT`. |
 
-* Lưu chi tiết từng bước kiểm tra thuật toán (mỗi bước một dòng); các trường tổng hợp được lặp lại để tiện lọc/đối chiếu.
-* Địa chỉ bị `INVALID_INPUT` (không đi qua các bước thuật toán) vẫn xuất 1 dòng với các trường bước (`step`, `step_description`, `step_passed`) để trống.
+Từng dòng địa chỉ không hợp lệ vẫn được giữ đúng thứ tự và đánh dấu `INVALID_INPUT`; các dòng còn lại tiếp tục xử lý. Theo hành vi hiện tại của `csv_input.py`, file địa chỉ rỗng hoàn toàn hoặc chỉ có header bị từ chối vì không có dòng địa chỉ để xử lý.
+
+### 2.3. Kết quả `output/trace.csv`
+
+Header: `seg_id,offset,access,base,limit,physical,status,reason`.
+
+- Mỗi địa chỉ đầu vào tạo một dòng kết quả theo đúng thứ tự.
+- `base`, `limit` để trống nếu segment không tồn tại hoặc địa chỉ `INVALID_INPUT`.
+- `physical` để trống nếu trạng thái khác `OK`.
+- Access hợp lệ được xuất theo ký tự chuẩn hóa chữ hoa.
+
+### 2.4. Kết quả `output/trace_steps.csv`
+
+Header: `address_position,seg_id,offset,access,base,limit,physical,status,reason,step,step_description,step_passed`.
+Mỗi bước dịch được ghi thành một dòng; địa chỉ `INVALID_INPUT` không đi qua các bước dịch.
 
 ---
 
 ## 3. Kiểu dữ liệu dùng chung
 
-Nằm trong `src/core/result_types.py`, **chỉ TV1 được sửa**. Mọi người chỉ import, không tự định nghĩa lại:
-
-    from core.result_types import Status, TranslationResult, FaultResult, Segment, SegmentTable
-
-Gồm: `Status` (5 trạng thái), `Step`, `FaultResult`, `TranslationResult`, `Segment`, `SegmentTable`.
-
-Muốn thêm hoặc đổi gì, nhắn TV1. Mỗi lần file này đổi sẽ có thông báo trong nhóm chat, mọi người `git pull` về rồi mới code tiếp.
-
-## 4. Thứ tự kiểm tra lỗi & Danh sách mã trạng thái
-
-Hệ thống kiểm tra theo **thứ tự ưu tiên cố định 4 bước** và dừng ngay khi gặp lỗi đầu tiên:
-
-1. **Bước 1 – Segment:** `seg_id` không có trong Segment Table $\rightarrow$ `SEGMENT_FAULT`.
-2. **Bước 2 – Offset:** `offset < 0` hoặc `offset >= limit` $\rightarrow$ `OFFSET_OUT_OF_RANGE`.
-3. **Bước 3 – Quyền truy cập:** `R` khớp `perm[0]`, `W` khớp `perm[1]`, `X` khớp `perm[2]`. Không thỏa $\rightarrow$ `PROTECTION_FAULT`.
-4. **Bước 4 – Thành công:** Vượt qua cả 3 bước $\rightarrow$ `OK`, tính $\text{physical} = \text{base} + \text{offset}$.
-
-| Mã trạng thái (`status`) | Ý nghĩa |
-| :--- | :--- |
-| **`OK`** | Dịch địa chỉ thành công. |
-| **`SEGMENT_FAULT`** | `seg_id` không tồn tại trong bảng phân đoạn. |
-| **`OFFSET_OUT_OF_RANGE`** | `offset < 0` hoặc `offset >= limit`. |
-| **`PROTECTION_FAULT`** | `access` không khớp quyền `perm` của segment. |
-| **`INVALID_INPUT`** | Dòng trong `addresses.csv` sai định dạng (kiểu dữ liệu, ký tự quyền, thừa/thiếu ô...). |
+Các kiểu dùng chung nằm trong `src/core/result_types.py`: `Status`, `Step`, `FaultResult`, `TranslationResult`, `Segment`, `SegmentTable`.
 
 ---
 
-## 5. Chính sách xử lý dữ liệu sai (Error Handling)
+## 4. Thứ tự dịch và trạng thái
 
-| Tình huống lỗi | Cách xử lý của ứng dụng |
-| :--- | :--- |
-| `segments.csv` vi phạm quy tắc validate (Mục 6) | Từ chối nạp toàn bộ file, báo lỗi kèm số dòng và lý do. Không thực hiện dịch. |
-| `addresses.csv` rỗng hoàn toàn hoặc sai/thiếu tiêu đề | Từ chối nạp toàn bộ file và hiển thị thông báo lỗi. |
-| Một dòng trong `addresses.csv` sai định dạng | Đánh dấu dòng đó là `INVALID_INPUT`, giữ nguyên vị trí và tiếp tục dịch các dòng sau. |
+Với một địa chỉ có định dạng hợp lệ, kiểm tra theo thứ tự:
+
+1. Không tìm thấy `seg_id` → `SEGMENT_FAULT`.
+2. `offset < 0` hoặc `offset >= limit` → `OFFSET_OUT_OF_RANGE`.
+3. Quyền không được cấp trong `perm` → `PROTECTION_FAULT`.
+4. Nếu qua cả ba bước → `OK`, `physical = base + offset`.
+
+| Trạng thái | Ý nghĩa |
+|---|---|
+| `OK` | Dịch thành công. |
+| `SEGMENT_FAULT` | Segment không tồn tại. |
+| `OFFSET_OUT_OF_RANGE` | Offset nằm ngoài segment. |
+| `PROTECTION_FAULT` | Segment không cấp quyền truy cập yêu cầu. |
+| `INVALID_INPUT` | Dòng địa chỉ sai định dạng hoặc có trường không hợp lệ. |
 
 ---
 
-## 6. Tổ chức dữ liệu kiểm thử & Oracle đối chiếu
+## 5. Chính sách xử lý dữ liệu sai
+
+- Segment CSV không hợp lệ: từ chối nạp toàn bộ file và báo lỗi kèm dòng/lý do.
+- Address CSV không có header đúng hoặc không có dòng địa chỉ: từ chối nạp file.
+- Dòng địa chỉ riêng lẻ sai định dạng: đánh dấu `INVALID_INPUT`, giữ nguyên vị trí và tiếp tục xử lý các dòng khác.
+
+---
+
+## 6. Bộ dữ liệu và các trường hợp kiểm thử
 
 ```text
 input/
-├── segments.csv        # Dữ liệu phân đoạn chuẩn
-├── addresses.csv       # 18 địa chỉ phủ đầy đủ các trạng thái status
-├── edge_cases/         # Dữ liệu hợp lệ nằm ở khu vực biên bộ nhớ
-└── error_cases/        # Dữ liệu lỗi, dùng kiểm thử chức năng bắt lỗi
-
-src/tests/expected/     # Bộ đáp án chuẩn (Oracle), tính tay độc lập
-├── expected_trace.csv
-├── expected_trace_invalid_access.csv
-├── expected_trace_invalid_offset.csv
-├── expected_trace_invalid_seg_id.csv
-├── expected_trace_negative_offset.csv
-└── expected_trace_memory_boundary.csv
+├── segments.csv                         # Input chuẩn, hợp lệ
+├── addresses.csv                        # Input chuẩn; 18 địa chỉ
+├── edge_cases/
+│   ├── segments_adjacent.csv            # Hai segment liền kề
+│   ├── segments_memory_boundary.csv     # Segment kết thúc đúng ở byte 4999
+│   ├── addresses_memory_boundary.csv   # Offset biên, quyền, access chữ thường
+│   ├── segments_case_normalization.csv  # perm thường/pha hoa
+│   ├── addresses_case_normalization.csv # Access thường, biên và lỗi dòng
+│   ├── segments_permissions_mixed.csv   # R/W/X permission pha hoa/thường
+│   └── addresses_permissions_mixed.csv  # Kiểm tra từng quyền và các lỗi dịch
+└── error_cases/                         # CSV cố ý sai để chạy kiểm tra lỗi
 ```
 
-### 6.1. Kết quả mong đợi cho bộ dữ liệu chuẩn (`input/segments.csv` + `input/addresses.csv`)
-Đối chiếu với `src/tests/expected/expected_trace.csv` (tổng 18 dòng):
-* **8** dòng `OK`
-* **5** dòng `OFFSET_OUT_OF_RANGE`
-* **3** dòng `PROTECTION_FAULT`
-* **2** dòng `SEGMENT_FAULT`
-* **0** dòng `INVALID_INPUT`
+`input/segments.csv` chuẩn có 3 segment hợp lệ. `input/addresses.csv` giữ 18 dòng, bao phủ: dịch thành công, offset bằng 0/limit/âm, quyền bị từ chối, segment không tồn tại và access chữ thường. Access chữ thường được chuẩn hóa trước khi dịch. Expected trace chuẩn nằm ở `src/tests/expected/expected_trace.csv`.
 
-### 6.2. Test Cases biên (`input/edge_cases/`)
+### 6.1. Các bộ edge-case
 
-| File Test Case | Chạy kèm với | Kết quả mong đợi |
-| :--- | :--- | :--- |
-| `segments_adjacent.csv` | *(Chỉ nạp bảng)* | Hợp lệ: hai segment liền kề (`1000–1399` và `1400–1799`). |
-| `segments_memory_boundary.csv` | `addresses_memory_boundary.csv` | Hợp lệ: segment kết thúc đúng tại byte `4999`. Khớp `expected_trace_memory_boundary.csv`. |
+| Cặp file | Nội dung cần kiểm tra |
+|---|---|
+| `segments_adjacent.csv` (nạp riêng) | Hai segment liền nhau hợp lệ, không bị coi là overlap. |
+| `segments_memory_boundary.csv` + `addresses_memory_boundary.csv` | Segment `[4600,5000)` kết thúc tại byte `4999`; kiểm tra offset `0`, `399`, `400`, `-1`, quyền và access thường. |
+| `segments_case_normalization.csv` + `addresses_case_normalization.csv` | `perm` chữ thường/pha hoa và access `r/w/x`; gồm `OK`, `OFFSET_OUT_OF_RANGE`, `PROTECTION_FAULT`, `SEGMENT_FAULT`, `INVALID_INPUT`. |
+| `segments_permissions_mixed.csv` + `addresses_permissions_mixed.csv` | Thử từng quyền R/W/X viết hoa và thường trên các permission khác nhau. |
 
-### 6.3. Test Cases lỗi cho `segments.csv` (`input/error_cases/`)
-Tất cả các trường hợp dưới đây đều phải **từ chối nạp file** và hiển thị thông báo lỗi chi tiết:
+### 6.2. Segment CSV lỗi (`input/error_cases/`)
 
-| File Test Case | Mô tả lỗi | Kết quả mong đợi |
-| :--- | :--- | :--- |
-| `segments_empty.csv` | File rỗng | Từ chối file |
-| `segments_missing_column.csv` | Thiếu cột `limit` | Từ chối file |
-| `segments_invalid_number.csv` | `limit = abc` | Từ chối file. |
-| `segments_zero_limit.csv` | `limit = 0` | Từ chối file |
-| `segments_negative_base.csv` | `base = -100` | Từ chối file |
-| `segments_negative_limit.csv` | `limit = -400` | Từ chối file |
-| `segments_duplicate_id.csv` | Trùng `seg_id = 0` | Từ chối file |
-| `segments_overlap.csv` | Segment 0 (`1000–1399`) chồng lấn Segment 1 (`1300–1699`) | Từ chối file |
-| `segments_exceeds_memory.csv` | Segment 1 kết thúc ở byte `5199` (`> 4999`) | Từ chối file |
-| `segments_exceeds_memory_by_one.csv` | `base + limit = 5001` (vượt đúng 1 byte) | Từ chối file |
-| `segments_invalid_perm_length.csv` | `perm = RW` (thiếu độ dài) | Từ chối file |
-| `segments_invalid_perm_chars.csv` | `perm = ABC` | Từ chối file |
+Các file segment lỗi phải bị từ chối khi nạp. Bộ file hiện có gồm: `segments_empty.csv`, `segments_missing_column.csv`, `segments_invalid_number.csv`, `segments_zero_limit.csv`, `segments_negative_base.csv`, `segments_negative_limit.csv`, `segments_duplicate_id.csv`, `segments_overlap.csv`, `segments_exceeds_memory.csv`, `segments_exceeds_memory_by_one.csv`, `segments_invalid_perm_length.csv`, `segments_invalid_perm_chars.csv`.
 
-### 6.4. Test Cases lỗi cho `addresses.csv` (`input/error_cases/`)
-*(Chạy trên nền `input/segments.csv` chuẩn)*
+`segments_perm_lowercase_invalid.csv` được giữ làm ca kiểm tra permission sai độ dài: nội dung có bốn ký tự (`r-xz`), nên bị từ chối vì độ dài/ký tự không hợp lệ. Permission chỉ khác hoa/thường nhưng đúng mẫu, ví dụ `r-x`, là hợp lệ theo bộ đọc hiện tại.
 
-| File Test Case | Mô tả lỗi / Trường hợp kiểm thử | Kết quả mong đợi |
-| :--- | :--- | :--- |
-| `addresses_empty.csv` | File rỗng | Từ chối file |
-| `addresses_missing_column.csv` | Thiếu cột `access`| Từ chối file |
-| `addresses_invalid_access.csv` | `access = Z` (sai ký tự) và `access = r` (chữ thường hợp lệ) | Dòng chứa `Z` ghi `INVALID_INPUT`; dòng chứa `r` được chuẩn hóa thành `R` và dịch `OK`. Khớp `expected_trace_invalid_access.csv`. |
-| `addresses_invalid_offset.csv` | `offset = abc` hoặc để trống | Dòng 1, 3 ghi `INVALID_INPUT`, dòng 2 ghi `OK`. Khớp `expected_trace_invalid_offset.csv`. |
-| `addresses_invalid_seg_id.csv` | `seg_id = abc` | Dòng đó ghi `INVALID_INPUT`, các dòng khác dịch bình thường. Khớp `expected_trace_invalid_seg_id.csv`. |
-| `addresses_negative_offset.csv` | `offset = -5` (hợp lệ về cấu trúc)[cite: 8] | Ghi `OFFSET_OUT_OF_RANGE`, không phải `INVALID_INPUT`. Khớp `expected_trace_negative_offset.csv`. |
+### 6.3. Address CSV lỗi (`input/error_cases/`)
+
+- `addresses_invalid_access.csv`: có access hợp lệ `R`, access sai `Z`, và access thường `r` hợp lệ.
+- `addresses_access_variants.csv`: kiểm tra `R/r`, `W/w`, `X/x`, access không hợp lệ, access nhiều ký tự và access để trống; dòng sai được đánh dấu `INVALID_INPUT`.
+- `addresses_invalid_offset.csv`: offset không phải số hoặc để trống; các dòng đó là `INVALID_INPUT`.
+- `addresses_boundary_invalid.csv`: kết hợp offset biên/âm/vượt limit, access thường, segment không tồn tại, offset sai và offset trống.
+- `addresses_missing_column.csv`: thiếu cột, toàn file bị từ chối.
+- `addresses_empty.csv`: file rỗng, bị từ chối.
+
+### 6.4. Đáp án chuẩn
+
+Các trace expected hiện có trong `src/tests/expected/` là oracle cho các bộ dữ liệu tương ứng, gồm `expected_trace.csv` và `expected_trace_memory_boundary.csv` cùng các trace kiểm thử đã có. Với các cặp edge-case mới chưa có trace oracle riêng, cần kiểm tra trực tiếp status/physical theo quy tắc ở Mục 4.
 
 ---
 
-## 7. Tổng hợp quy tắc Validate bảng `segments.csv`
-File `segments.csv` bị từ chối ngay lập tức nếu vi phạm một trong các điều kiện:
-1. File rỗng, không có dòng dữ liệu, hoặc thiếu tiêu đề cột.
-2. `base`, `limit`, `seg_id` không phải số nguyên.
-3. `base < 0`.
-4. `limit <= 0`.
-5. Trùng `seg_id`.
-6. `perm` sai quy chuẩn (khác 3 ký tự hoặc chứa ký tự khác `R`, `W`, `X`, `-`, hoặc sai vị trí).
-7. Vượt bộ nhớ vật lý (`base + limit > 5000`).
-8. Có từ 2 segment trở lên chồng lấn nhau.
+## 7. Quy tắc validate `segments.csv` tóm tắt
+
+Từ chối bảng segment nếu file không đọc được/không có dữ liệu, header sai, số ô sai, trường số không hợp lệ, `seg_id < 0` hoặc trùng, `base < 0`, `limit <= 0`, permission sai mẫu sau chuẩn hóa, segment vượt `base + limit <= 5000`, hoặc có segment chồng lấn.
