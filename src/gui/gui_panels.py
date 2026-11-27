@@ -302,8 +302,8 @@ def create_gui_panels(
         ("offset", "OFFSET", 58),
         ("access", "Quyền", 52),
         ("physical", "Địa chỉ vật lý", 78),
-        ("status", "Trạng thái", 130),
-        ("reason", "Lý do", 340),
+        ("status", "Trạng thái", 175),
+        ("reason", "Lý do", 320),
     ]:
         tree_summary.heading(col, text=title)
         tree_summary.column(
