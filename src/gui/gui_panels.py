@@ -70,7 +70,7 @@ def create_gui_panels(
 
     # --- 1. BANG PHAN DOAN (SEGMENT TABLE) ---
     tk.Label(
-        left_col, text="1. BANG PHAN DOAN (SEGMENT TABLE)",
+        left_col, text="1. BẢNG PHÂN DOẠN (SEGMENT TABLE)",
         bg="#f1f5f9", fg="#334155", font=("Segoe UI", 9, "bold")
     ).pack(anchor="w")
 
@@ -81,8 +81,8 @@ def create_gui_panels(
     )
     lbl_seg_count.pack(side="left")
 
-    _make_btn(bar1, "Xoa het", cb_clear_seg, bg="#ffffff", fg="#dc2626").pack(side="right", padx=(4, 0))
-    _make_btn(bar1, "Mo file CSV", cb_open_seg_csv, bg="#ffffff", fg="#334155").pack(side="right")
+    _make_btn(bar1, "Xóa hết", cb_clear_seg, bg="#ffffff", fg="#dc2626").pack(side="right", padx=(4, 0))
+    _make_btn(bar1, "Mở file CSV", cb_open_seg_csv, bg="#ffffff", fg="#334155").pack(side="right")
 
     cols_seg = ("seg_id", "base", "limit", "perm", "action")
     tree_seg = ttk.Treeview(left_col, columns=cols_seg, show="headings", height=4, style="Modern.Treeview")
@@ -97,7 +97,6 @@ def create_gui_panels(
         tree_seg.column(col, width=w, anchor="center")
     tree_seg.pack(fill="x")
 
-    # Form them / cap nhat segment
     form1 = tk.Frame(left_col, bg="#f1f5f9")
     form1.pack(fill="x", pady=(5, 8))
 
@@ -129,19 +128,19 @@ def create_gui_panels(
 
     # --- 2. BANG DIA CHI LOGIC (LOGICAL ADDRESS TABLE) ---
     tk.Label(
-        left_col, text="2. BANG DIA CHI LOGIC (LOGICAL ADDRESS TABLE)",
+        left_col, text="2. BẢNG ĐỊA CHỈ LOGIC (LOGICAL ADDRESS TABLE)",
         bg="#f1f5f9", fg="#334155", font=("Segoe UI", 9, "bold")
     ).pack(anchor="w")
 
     bar2 = tk.Frame(left_col, bg="#f1f5f9")
     bar2.pack(fill="x", pady=(2, 3))
     lbl_addr_count = tk.Label(
-        bar2, text="0 DIA CHI", bg="#f1f5f9", fg="#0284c7", font=("Segoe UI", 8, "bold")
+        bar2, text="0 ĐỊA CHỈ", bg="#f1f5f9", fg="#0284c7", font=("Segoe UI", 8, "bold")
     )
     lbl_addr_count.pack(side="left")
 
-    _make_btn(bar2, "Xoa het", cb_clear_addr, bg="#ffffff", fg="#dc2626").pack(side="right", padx=(4, 0))
-    _make_btn(bar2, "Mo file CSV", cb_open_addr_csv, bg="#ffffff", fg="#334155").pack(side="right")
+    _make_btn(bar2, "Xóa hết", cb_clear_addr, bg="#ffffff", fg="#dc2626").pack(side="right", padx=(4, 0))
+    _make_btn(bar2, "Mở file CSV", cb_open_addr_csv, bg="#ffffff", fg="#334155").pack(side="right")
 
     cols_addr = ("stt", "seg_id", "offset", "access", "action")
     tree_addr = ttk.Treeview(left_col, columns=cols_addr, show="headings", height=4, style="Modern.Treeview")
@@ -182,28 +181,28 @@ def create_gui_panels(
         bg="#0284c7", fg="#ffffff", border="#0284c7", bold=True
     ).pack(side="left")
 
-    # 2 nut hanh dong lon
+    # 2 nút dịch từng dòng/dịch toàn bộ
     action_row = tk.Frame(left_col, bg="#f1f5f9")
     action_row.pack(fill="x", pady=(2, 8))
     action_row.columnconfigure(0, weight=1)
     action_row.columnconfigure(1, weight=1)
 
     btn_sel = _make_btn(
-        action_row, "Dich dong dang chon", cb_translate_selected,
+        action_row, "Dịch dòng đang chọn", cb_translate_selected,
         bg="#0284c7", fg="#ffffff", border="#0284c7", bold=True, pady=5
     )
     btn_sel.grid(row=0, column=0, sticky="ew", padx=(0, 4))
 
     btn_all = _make_btn(
-        action_row, "Dich tat ca", cb_translate_all,
+        action_row, "Dịch tất cả", cb_translate_all,
         bg="#15803d", fg="#ffffff", border="#15803d", bold=True, pady=5
     )
     btn_all.grid(row=0, column=1, sticky="ew", padx=(4, 0))
 
     # --- 3. BANG KET QUA DICH DIA CHI ---
     tk.Label(
-        left_col, text="3. BANG KET QUA DICH DIA CHI",
-        bg="#f1f5f9", fg="#334155", font=("Segoe UI", 9, "bold")
+        left_col, text="3. BẢNG KẾT QUẢ DỊCH ĐỊA CHỈ",
+        bg="#f1f5f9", fg="#334155",font=("Segoe UI", 9, "bold")
     ).pack(anchor="w", pady=(0, 2))
 
     res_container = tk.Frame(left_col, bg="#f1f5f9")
@@ -242,7 +241,7 @@ def create_gui_panels(
 
     # --- 4. MEMORY MAP - SO DO BO NHO ---
     tk.Label(
-        right_col, text="4. MEMORY MAP - SO DO BO NHO (5000 BYTE)",
+        right_col, text="4. MEMORY MAP - SƠ ĐỒ BỘ NHỚ (5000 BYTE)",
         bg="#f1f5f9", fg="#334155", font=("Segoe UI", 9, "bold")
     ).pack(anchor="w", pady=(0, 3))
 
@@ -268,30 +267,30 @@ def create_gui_panels(
         tk.Label(legend_frame, text=text, bg="#f1f5f9", fg="#475569", font=("Segoe UI", 7)).pack(side="left", padx=(0, 8))
 
     tk.Label(
-        legend_frame, text="--- Dia chi vat ly vua dich",
+        legend_frame, text="--- Địa chỉ vật lý vừa dịch",
         bg="#f1f5f9", fg="#dc2626", font=("Segoe UI", 7, "bold")
     ).pack(side="left")
 
     lbl_map_status = tk.Label(
-        right_col, text="TRANG THAI: San sang.",
+        right_col, text="TRẠNG THÁI: Sẵn sàng.",
         bg="#f1f5f9", fg="#334155", font=("Segoe UI", 8, "bold")
     )
     lbl_map_status.pack(anchor="w", pady=(0, 6))
 
     # --- 5. KET QUA TONG HOP (BATCH OUTPUT) ---
     tk.Label(
-        right_col, text="5. KET QUA TONG HOP (BATCH OUTPUT)",
+        right_col, text="5. KẾT QUẢ TỔNG HỢP (BATCH OUTPUT)",
         bg="#f1f5f9", fg="#334155", font=("Segoe UI", 9, "bold")
     ).pack(anchor="w")
 
     bar5 = tk.Frame(right_col, bg="#f1f5f9")
     bar5.pack(fill="x", pady=(2, 3))
     lbl_batch_status = tk.Label(
-        bar5, text="Chua co ket qua", bg="#f1f5f9", fg="#d97706", font=("Segoe UI", 8, "bold")
+        bar5, text="Chưa có kết quả", bg="#f1f5f9", fg="#d97706", font=("Segoe UI", 8, "bold")
     )
     lbl_batch_status.pack(side="left")
 
-    _make_btn(bar5, "Xuat ket qua CSV", cb_export, bg="#ffffff", fg="#334155").pack(side="right")
+    _make_btn(bar5, "Xuất kết quả CSV", cb_export, bg="#ffffff", fg="#334155").pack(side="right")
 
     summary_container = tk.Frame(right_col, bg="#f1f5f9")
     summary_container.pack(fill="both", expand=True)
@@ -357,17 +356,17 @@ def create_gui_panels(
 
 
 def validate_and_load_csv(filepath):
-    """Kiem tra va doc file CSV (khong dau)."""
+    """Kiem tra va doc file CSV"""
     try:
         with open(filepath, "r", encoding="utf-8-sig", newline="") as file:
             reader = csv.reader(file)
             header = next(reader, None)
             if not header or len(header) < 3:
-                raise ValueError("File CSV khong dung dinh dang cot.")
+                raise ValueError("File CSV không đúng định đạng cột.")
             rows = [r for r in reader if r]
             if not rows:
-                raise ValueError("File CSV khong co du lieu.")
+                raise ValueError("File CSV không có dữ liệu.")
             return rows
     except Exception as e:
-        messagebox.showerror("Loi du lieu CSV", f"Khong the doc file CSV!\nNguyen nhan: {str(e)}")
+        messagebox.showerror("Lỗi dữ liệu CSV", f"Không thể đọc file CSV!\nNguyên nhân: {str(e)}")
         return None
