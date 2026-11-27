@@ -1,8 +1,4 @@
-"""benchmark.py - TV5: đo hiệu năng dịch địa chỉ và đối chiếu với oracle.
-
-Chạy từ thư mục gốc repo:
-    python src/core/benchmark.py --segments input/segments.csv
-"""
+"""Benchmark chỉ dùng perm và access viết hoa."""
 from __future__ import annotations
 
 import argparse
@@ -15,10 +11,10 @@ from dataclasses import dataclass, asdict
 from pathlib import Path
 from time import perf_counter
 
-if __package__ in (None, ""):  # chạy trực tiếp: python src/core/benchmark.py
+if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from core.validator import get_segments, validate_table  # noqa: E402
+from core.validator import get_segments, validate_table
 
 DEFAULT_SIZES = (1_000, 10_000, 100_000, 1_000_000)
 ACCESS_TYPES = ("R", "W", "X")
@@ -40,7 +36,6 @@ class BenchRow:
 
 
 def generate_addresses(table, n, seed=42, invalid_ratio=0.2):
-    """Sinh n bộ (seg_id, offset, access) có thể tái lập."""
     rng = random.Random(seed)
     segs = [(s.seg_id, s.limit) for s in get_segments(table) if s.limit > 0]
     if not segs:
@@ -66,8 +61,7 @@ def generate_addresses(table, n, seed=42, invalid_ratio=0.2):
 
 
 def make_oracle(table):
-    """Oracle độc lập: trả về (status, physical) theo quy ước README."""
-    spec = {s.seg_id: (s.base, s.limit, str(s.perm).strip().upper())
+    spec = {s.seg_id: (s.base, s.limit, str(s.perm).strip())
             for s in get_segments(table)}
 
     def oracle(seg_id, offset, access):
@@ -77,152 +71,10 @@ def make_oracle(table):
         base, limit, perm = entry
         if offset < 0 or offset >= limit:
             return ("OFFSET_OUT_OF_RANGE", None)
-        access = str(access).strip().upper()
+        access = str(access).strip()
         position = _PERM_INDEX.get(access)
         if position is None or len(perm) != 3 or perm[position] != access:
             return ("PROTECTION_FAULT", None)
         return ("OK", base + offset)
 
     return oracle
-
-
-def default_extract(result):
-    """Lấy (status, physical) từ TranslationResult."""
-    status = getattr(result, "status", None)
-    status = getattr(status, "value", status)
-    return (None if status is None else str(status), getattr(result, "physical", None))
-
-
-def _takes_access(translate_fn):
-    """translate(table, seg_id, offset, access) hay không có access?"""
-    try:
-        params = [p for p in inspect.signature(translate_fn).parameters.values()
-                  if p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)]
-    except (TypeError, ValueError):
-        return True
-    return len(params) >= 4
-
-
-def _time_pass(translate_fn, table, addrs, with_access):
-    t0 = perf_counter()
-    if with_access:
-        for seg_id, offset, access in addrs:
-            translate_fn(table, seg_id, offset, access)
-    else:
-        for seg_id, offset, _ in addrs:
-            translate_fn(table, seg_id, offset)
-    return perf_counter() - t0
-
-
-def run_benchmark(table, translate_fn, sizes=DEFAULT_SIZES, repeats=3, seed=42,
-                  invalid_ratio=0.2, extract=default_extract, progress=None):
-    """Đo thời gian translate_fn cho từng kích thước và đối chiếu với oracle."""
-    if repeats < 1:
-        raise ValueError("repeats phải >= 1")
-    oracle = make_oracle(table)
-    with_access = _takes_access(translate_fn)
-    rows = []
-    prev_n = prev_median = None
-    for n in sizes:
-        if n <= 0:
-            raise ValueError("kích thước phải > 0")
-        addrs = generate_addresses(table, n, seed, invalid_ratio)
-        times = [_time_pass(translate_fn, table, addrs, with_access)
-                 for _ in range(repeats)]
-        valid = faults = mismatches = 0
-        for seg_id, offset, access in addrs:
-            expected = oracle(seg_id, offset, access)
-            result = (translate_fn(table, seg_id, offset, access) if with_access
-                      else translate_fn(table, seg_id, offset))
-            if expected[0] == "OK":
-                valid += 1
-            else:
-                faults += 1
-            if extract(result) != expected:
-                mismatches += 1
-        median = statistics.median(times)
-        row = BenchRow(
-            n=n, repeats=repeats, min_s=min(times), median_s=median,
-            per_addr_us=median / n * 1e6,
-            ratio_prev=(median / prev_median) if prev_median else None,
-            expected_ratio=(n / prev_n) if prev_n else None,
-            valid=valid, faults=faults, mismatches=mismatches,
-        )
-        rows.append(row)
-        if progress:
-            progress(row)
-        prev_n, prev_median = n, median
-    return rows
-
-
-def write_csv(rows, path):
-    fields = list(BenchRow.__dataclass_fields__)
-    with open(path, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=fields)
-        writer.writeheader()
-        for row in rows:
-            writer.writerow(asdict(row))
-
-
-def format_rows(rows):
-    head = (f"{'n':>10} {'min (s)':>10} {'median (s)':>11} {'us/addr':>9} "
-            f"{'ratio':>7} {'expected':>9} {'mismatch':>9}")
-    lines = [head]
-    for r in rows:
-        ratio = f"{r.ratio_prev:.2f}" if r.ratio_prev is not None else "-"
-        exp = f"{r.expected_ratio:.1f}" if r.expected_ratio is not None else "-"
-        lines.append(f"{r.n:>10} {r.min_s:>10.4f} {r.median_s:>11.4f} "
-                     f"{r.per_addr_us:>9.3f} {ratio:>7} {exp:>9} {r.mismatches:>9}")
-    return "\n".join(lines)
-
-
-def table_from_dataframe(df, mem_size=5000):
-    """Đổi DataFrame từ read_and_validate_segments thành SegmentTable."""
-    from core.result_types import Segment, SegmentTable
-    table = SegmentTable(mem_size)
-    for row in df.itertuples(index=False):
-        table.add(Segment(int(row.seg_id), int(row.base), int(row.limit), str(row.perm)))
-    return table
-
-
-def main(argv=None):
-    parser = argparse.ArgumentParser(description="Benchmark dịch địa chỉ segmentation")
-    parser.add_argument("--segments", default="input/segments.csv")
-    parser.add_argument("--mem-size", type=int, default=5000)
-    parser.add_argument("--sizes", type=int, nargs="+", default=list(DEFAULT_SIZES))
-    parser.add_argument("--repeats", type=int, default=3)
-    parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--out", default="output/benchmark.csv")
-    args = parser.parse_args(argv)
-
-    try:
-        from core.csv_input import ValidationError, read_and_validate_segments
-        from core.translator import translate
-    except ImportError as exc:
-        print(f"Không import được module của TV1/TV2: {exc}", file=sys.stderr)
-        return 1
-    try:
-        table = table_from_dataframe(read_and_validate_segments(args.segments), args.mem_size)
-    except FileNotFoundError:
-        print(f"Không tìm thấy file: {args.segments}", file=sys.stderr)
-        return 1
-    except ValidationError as exc:
-        print(f"segments.csv không hợp lệ:\n{exc}", file=sys.stderr)
-        return 1
-    issues = validate_table(table, args.mem_size)
-    for issue in issues:
-        print("CẢNH BÁO:", issue.message)
-    if issues:
-        print("Segment table không hợp lệ, dừng benchmark.", file=sys.stderr)
-        return 1
-    rows = run_benchmark(table, translate, sizes=args.sizes, repeats=args.repeats,
-                         seed=args.seed, progress=lambda r: print(f"đã xong n={r.n}"))
-    print(format_rows(rows))
-    Path(args.out).parent.mkdir(parents=True, exist_ok=True)
-    write_csv(rows, args.out)
-    print(f"Đã ghi {args.out}")
-    return 0 if all(r.mismatches == 0 for r in rows) else 2
-
-
-if __name__ == "__main__":
-    sys.exit(main())

@@ -91,7 +91,7 @@ def draw_memory_map(canvas, table, mem_size, highlight_addr=None,
     )
     canvas.create_text(
         (x0 + x1) / 2, TOP_MARGIN - 14,
-        text=f"Bo nho vat ly ({mem_size} byte)",
+        text=f"Bộ nhớ vật lý ({mem_size} byte)",
         anchor="center", fill="#334155", font=("Segoe UI", 9, "bold")
     )
 
