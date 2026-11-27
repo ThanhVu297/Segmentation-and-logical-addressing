@@ -21,6 +21,7 @@ class ValidationError(Exception):
     """Lỗi dữ liệu đầu vào CSV."""
 
 
+
 def _parse_int(text: str):
     text = text.strip()
     if INT_PATTERN.fullmatch(text):
@@ -52,6 +53,7 @@ def _read_csv(filepath: str, required_cols: List[str]) -> Tuple[Dict[str, int], 
     missing = [column for column in required_cols if column not in header]
     if missing:
         raise ValidationError(f"File '{filepath}' thiếu các cột: {', '.join(missing)}")
+
     if header != required_cols:
         raise ValidationError(
             f"File '{filepath}' có tiêu đề {header}, cần đúng thứ tự {required_cols}."
@@ -84,6 +86,20 @@ def read_and_validate_segments(filepath: str) -> pd.DataFrame:
         limit = _parse_int(raw_limit)
         # Chuẩn hóa permission đầu vào trước khi kiểm tra và lưu.
         perm = raw_perm.upper()
+        seg_id = _parse_int(fields[idx["seg_id"]])
+        base = _parse_int(fields[idx["base"]])
+        limit = _parse_int(fields[idx["limit"]])
+        perm = fields[idx["perm"]].strip()
+
+        if base is not None and limit is not None:
+            if base >= 0 and limit > 0:
+                end = base + limit
+                if end > 5000:
+                    errors.append(
+                        f"Dòng {line_no}: segment vượt kích thước bộ nhớ "
+                        f"(base={base}, limit={limit}, cần địa chỉ kết thúc <= 4999)."
+                    )
+
         row_ok = True
 
         if seg_id is None:
@@ -117,6 +133,7 @@ def read_and_validate_segments(filepath: str) -> pd.DataFrame:
                 f"Dòng {line_no}: perm '{raw_perm}' sai định dạng "
                 "(chỉ nhận R, W, X hoặc -, ví dụ 'RW-', 'R-X', '---')."
             )
+            errors.append(f"Dòng {line_no}: perm '{perm}' sai định dạng (chỉ nhận R, W, X viết hoa, ví dụ 'RW-', 'R-X', '---').")
             row_ok = False
 
         if base is not None and limit is not None and base >= 0 and limit > 0:
@@ -140,6 +157,14 @@ def read_and_validate_segments(filepath: str) -> pd.DataFrame:
         if row_ok:
             records.append({"seg_id": seg_id, "base": base, "limit": limit, "perm": perm})
             parsed_segments.append({"seg_id": seg_id, "base": base, "limit": limit, "line": line_no})
+            record = {"seg_id": seg_id, "base": base, "limit": limit, "perm": perm}
+            records.append(record)
+            parsed_segments.append({
+                "seg_id": seg_id,
+                "base": base,
+                "limit": limit,
+                "line": line_no,
+            })
 
     if errors:
         raise ValidationError(f"File '{filepath}' có {len(errors)} lỗi:\n  - " + "\n  - ".join(errors))
@@ -166,6 +191,9 @@ def read_and_validate_addresses(filepath: str) -> pd.DataFrame:
         raw_seg = fields[idx["seg_id"]]
         raw_offset = fields[idx["offset"]]
         access = fields[idx["access"]].strip().upper()
+        raw_off = fields[idx["offset"]]
+        access = fields[idx["access"]].strip()
+
         seg_id = _parse_int(raw_seg)
         offset = _parse_int(raw_offset)
         record["seg_id"], record["offset"], record["access"] = seg_id, offset, access
@@ -180,6 +208,8 @@ def read_and_validate_addresses(filepath: str) -> pd.DataFrame:
             )
         if access not in VALID_ACCESS:
             problems.append(f"access '{access}' không hợp lệ (chỉ nhận R, W, X)")
+            problems.append(f"access '{access}' không hợp lệ (chỉ nhận R, W, X viết hoa)")
+
         if problems:
             record["status"] = STATUS_INVALID_INPUT
             record["error"] = "; ".join(problems)

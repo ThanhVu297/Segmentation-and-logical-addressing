@@ -1,4 +1,5 @@
 """Benchmark dịch địa chỉ segmentation và đối chiếu kết quả với oracle."""
+"""Benchmark chỉ dùng perm và access viết hoa."""
 from __future__ import annotations
 
 import argparse
@@ -65,6 +66,8 @@ def make_oracle(table):
         seg.seg_id: (seg.base, seg.limit, str(seg.perm).strip().upper())
         for seg in get_segments(table)
     }
+    spec = {s.seg_id: (s.base, s.limit, str(s.perm).strip())
+            for s in get_segments(table)}
 
     def oracle(seg_id, offset, access):
         entry = spec.get(seg_id)
@@ -73,7 +76,7 @@ def make_oracle(table):
         base, limit, perm = entry
         if offset < 0 or offset >= limit:
             return ("OFFSET_OUT_OF_RANGE", None)
-        access = str(access).strip().upper()
+        access = str(access).strip()
         position = _PERM_INDEX.get(access)
         if position is None or len(perm) != 3 or perm[position] != access:
             return ("PROTECTION_FAULT", None)
