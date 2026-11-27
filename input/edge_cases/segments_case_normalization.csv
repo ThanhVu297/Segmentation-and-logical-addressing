@@ -1,4 +1,0 @@
-seg_id,base,limit,perm
-0,0,100,rwx
-1,100,100,rW-
-2,200,100,R-X
