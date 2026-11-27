@@ -2,12 +2,12 @@ from .result_types import ACCESS_TYPES, FaultResult, Status
 
 
 def check_permission(perm: object, access: object) -> bool:
-    """Kiểm tra quyền theo đúng định dạng [R-][W-][X-]; chỉ nhận chữ hoa."""
+    """Kiểm tra quyền theo định dạng [R-][W-][X-], không phân biệt hoa/thường."""
     if not isinstance(perm, str) or not isinstance(access, str):
         return False
 
-    perm = perm.strip()
-    access = access.strip()
+    perm = perm.strip().upper()
+    access = access.strip().upper()
 
     if len(perm) != len(ACCESS_TYPES):
         return False
