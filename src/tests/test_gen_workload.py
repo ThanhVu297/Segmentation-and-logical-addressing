@@ -24,7 +24,7 @@ class TestGenerateWorkload(unittest.TestCase):
         self.segments_path.write_text(SEGMENTS_CSV, encoding="utf-8")
 
     def read_rows(self, path):
-        with path.open(newline="", encoding="utf-8") as file:
+        with path.open(newline="", encoding="utf-8-sig") as file:
             reader = csv.DictReader(file)
             self.assertEqual(reader.fieldnames, ["seg_id", "offset", "access"])
             return list(reader)
@@ -49,6 +49,7 @@ class TestGenerateWorkload(unittest.TestCase):
         self.assertEqual(statuses.count("OK"), stats["expected_ok"])
         self.assertEqual(sum(status != "OK" for status in statuses), stats["expected_errors"])
         self.assertEqual(stats["output_path"], str(output_path))
+        self.assertTrue(output_path.read_bytes().startswith(b"\xef\xbb\xbf"))
 
     def test_same_seed_produces_identical_workload(self):
         first = self.root / "first.csv"

@@ -94,7 +94,9 @@ def generate_workload(segments_path="input/segments.csv", output_path="input/add
     rng.shuffle(rows)
     output = Path(output_path)
     output.parent.mkdir(parents=True, exist_ok=True)
-    with output.open("w", newline="", encoding="utf-8") as file:
+    # utf-8-sig ghi BOM để Excel nhận diện đúng encoding; reader utf-8-sig
+    # cũng đọc được cả CSV có BOM lẫn không có BOM.
+    with output.open("w", newline="", encoding="utf-8-sig") as file:
         writer = csv.writer(file)
         writer.writerow(["seg_id", "offset", "access"])
         writer.writerows(rows)

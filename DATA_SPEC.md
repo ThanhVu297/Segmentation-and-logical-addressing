@@ -10,9 +10,11 @@
 
 ## 2. Định dạng các file CSV
 
-### 2.0. Quy tắc đọc file chung
+### 2.0. Quy tắc đọc và ghi file chung
 
-- Mã hóa UTF-8 (có thể có BOM).
+- Mã hóa văn bản của CSV là **UTF-8-SIG** (UTF-8 có BOM ở đầu file khi ghi).
+- Khi đọc, chương trình dùng `utf-8-sig`, nên chấp nhận cả file UTF-8 có BOM lẫn UTF-8 không có BOM.
+- Khi xuất CSV (kết quả dịch và workload sinh tự động), chương trình ghi UTF-8-SIG để Excel nhận diện đúng tiếng Việt và ký tự Unicode.
 - Dòng đầu là header, tên cột phân biệt hoa/thường và phải đúng thứ tự.
 - Loại bỏ khoảng trắng ở đầu/cuối ô khi kiểm tra; bỏ qua dòng trống hoàn toàn.
 - Dòng có số ô khác số cột header bị coi là sai định dạng.
@@ -50,6 +52,7 @@ Header: `stt,seg_id,offset,access,base,limit,physical,status,reason`.
 
 - Access hợp lệ được xuất nguyên giá trị `R`, `W` hoặc `X`.
 - Không có bước chuyển đổi chữ thường sang chữ hoa.
+- File kết quả được ghi bằng UTF-8-SIG để hỗ trợ Excel.
 
 ## 3. Chính sách xử lý dữ liệu sai
 
@@ -77,3 +80,4 @@ Các test cần bao phủ:
 - `access` hợp lệ: `R`, `W`, `X`.
 - `access` chữ thường: `r`, `w`, `x` phải trả `INVALID_INPUT`.
 - Không tồn tại logic `.upper()` hoặc `.lower()` trong đường xử lý permission/access.
+- CSV đầu ra được kiểm tra có BOM UTF-8-SIG; CSV đầu vào vẫn đọc được cả khi có hoặc không có BOM.
