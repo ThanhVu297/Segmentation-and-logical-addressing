@@ -1,6 +1,6 @@
+import csv
 import tkinter as tk
 from tkinter import ttk, messagebox
-import csv
 
 
 def _make_btn(parent, text, command, bg="#ffffff", fg="#1e293b", border="#cbd5e1", bold=False, padx=10, pady=3):
@@ -38,7 +38,7 @@ def create_gui_panels(
     cb_next_step=None,
     cb_export=None,
 ):
-    """Tao giao dien 2 cot giong anh mau (tieng Viet khong dau, du cot BASE/LIMIT + thanh cuon)."""
+    """Tạo giao diện hai cột với đầy đủ dấu tiếng Việt."""
     style = ttk.Style()
     style.theme_use("clam")
     style.configure(
@@ -64,34 +64,33 @@ def create_gui_panels(
     main_frame.columnconfigure(1, weight=12)
     main_frame.rowconfigure(0, weight=1)
 
-    # ==================== COT TRAI (MUC 1, 2, 3) ====================
+    # ==================== CỘT TRÁI (MỤC 1, 2, 3) ====================
     left_col = tk.Frame(main_frame, bg="#f1f5f9")
     left_col.grid(row=0, column=0, sticky="nsew", padx=(0, 8))
 
-    # --- 1. BANG PHAN DOAN (SEGMENT TABLE) ---
     tk.Label(
-        left_col, text="1. BẢNG PHÂN DOẠN (SEGMENT TABLE)",
+        left_col, text="1. BẢNG PHÂN ĐOẠN (SEGMENT TABLE)",
         bg="#f1f5f9", fg="#334155", font=("Segoe UI", 9, "bold")
     ).pack(anchor="w")
 
     bar1 = tk.Frame(left_col, bg="#f1f5f9")
     bar1.pack(fill="x", pady=(2, 3))
     lbl_seg_count = tk.Label(
-        bar1, text="0 SEGMENTS", bg="#f1f5f9", fg="#0284c7", font=("Segoe UI", 8, "bold")
+        bar1, text="0 SEGMENT", bg="#f1f5f9", fg="#0284c7", font=("Segoe UI", 8, "bold")
     )
     lbl_seg_count.pack(side="left")
 
     _make_btn(bar1, "Xóa hết", cb_clear_seg, bg="#ffffff", fg="#dc2626").pack(side="right", padx=(4, 0))
-    _make_btn(bar1, "Mở file CSV", cb_open_seg_csv, bg="#ffffff", fg="#334155").pack(side="right")
+    _make_btn(bar1, "Mở tệp CSV", cb_open_seg_csv, bg="#ffffff", fg="#334155").pack(side="right")
 
     cols_seg = ("seg_id", "base", "limit", "perm", "action")
     tree_seg = ttk.Treeview(left_col, columns=cols_seg, show="headings", height=4, style="Modern.Treeview")
     for col, title, w in [
-        ("seg_id", "Segment ID", 75),
+        ("seg_id", "Mã Segment", 75),
         ("base", "Base", 85),
         ("limit", "Limit", 85),
-        ("perm", "Permission", 85),
-        ("action", "Thao tac", 85),
+        ("perm", "Quyền", 85),
+        ("action", "Thao tác", 85),
     ]:
         tree_seg.heading(col, text=title)
         tree_seg.column(col, width=w, anchor="center")
@@ -105,7 +104,7 @@ def create_gui_panels(
     limit_var = tk.StringVar()
     perm_var = tk.StringVar(value="R-X")
 
-    tk.Label(form1, text="Seg ID", bg="#f1f5f9", fg="#475569", font=("Segoe UI", 8)).pack(side="left")
+    tk.Label(form1, text="Mã Segment", bg="#f1f5f9", fg="#475569", font=("Segoe UI", 8)).pack(side="left")
     tk.Entry(form1, textvariable=seg_id_var, width=5, relief="solid", bd=1).pack(side="left", padx=(3, 8))
 
     tk.Label(form1, text="Base (byte)", bg="#f1f5f9", fg="#475569", font=("Segoe UI", 8)).pack(side="left")
@@ -114,19 +113,19 @@ def create_gui_panels(
     tk.Label(form1, text="Limit (byte)", bg="#f1f5f9", fg="#475569", font=("Segoe UI", 8)).pack(side="left")
     tk.Entry(form1, textvariable=limit_var, width=8, relief="solid", bd=1).pack(side="left", padx=(3, 8))
 
-    tk.Label(form1, text="Permission", bg="#f1f5f9", fg="#475569", font=("Segoe UI", 8)).pack(side="left")
+    tk.Label(form1, text="Quyền", bg="#f1f5f9", fg="#475569", font=("Segoe UI", 8)).pack(side="left")
     ttk.Combobox(
         form1, textvariable=perm_var, values=["R-X", "RW-", "R--", "RWX", "---"],
         width=5, state="readonly"
     ).pack(side="left", padx=(3, 8))
 
     _make_btn(
-        form1, "+ Them / Cap nhat",
+        form1, "+ Thêm / Cập nhật",
         lambda: cb_add_seg(seg_id_var.get(), base_var.get(), limit_var.get(), perm_var.get()) if cb_add_seg else None,
         bg="#0284c7", fg="#ffffff", border="#0284c7", bold=True
     ).pack(side="left")
 
-    # --- 2. BANG DIA CHI LOGIC (LOGICAL ADDRESS TABLE) ---
+    # ==================== 2. BẢNG ĐỊA CHỈ LOGIC ====================
     tk.Label(
         left_col, text="2. BẢNG ĐỊA CHỈ LOGIC (LOGICAL ADDRESS TABLE)",
         bg="#f1f5f9", fg="#334155", font=("Segoe UI", 9, "bold")
@@ -140,22 +139,21 @@ def create_gui_panels(
     lbl_addr_count.pack(side="left")
 
     _make_btn(bar2, "Xóa hết", cb_clear_addr, bg="#ffffff", fg="#dc2626").pack(side="right", padx=(4, 0))
-    _make_btn(bar2, "Mở file CSV", cb_open_addr_csv, bg="#ffffff", fg="#334155").pack(side="right")
+    _make_btn(bar2, "Mở tệp CSV", cb_open_addr_csv, bg="#ffffff", fg="#334155").pack(side="right")
 
     cols_addr = ("stt", "seg_id", "offset", "access", "action")
     tree_addr = ttk.Treeview(left_col, columns=cols_addr, show="headings", height=4, style="Modern.Treeview")
     for col, title, w in [
         ("stt", "STT", 45),
-        ("seg_id", "Segment ID", 90),
+        ("seg_id", "Mã Segment", 90),
         ("offset", "Offset", 90),
-        ("access", "Access", 80),
-        ("action", "Thao tac", 90),
+        ("access", "Quyền truy cập", 80),
+        ("action", "Thao tác", 90),
     ]:
         tree_addr.heading(col, text=title)
         tree_addr.column(col, width=w, anchor="center")
     tree_addr.pack(fill="x")
 
-    # Form them dia chi logic
     form2 = tk.Frame(left_col, bg="#f1f5f9")
     form2.pack(fill="x", pady=(5, 5))
 
@@ -163,25 +161,24 @@ def create_gui_panels(
     addr_offset_var = tk.StringVar()
     addr_access_var = tk.StringVar(value="R")
 
-    tk.Label(form2, text="Seg ID", bg="#f1f5f9", fg="#475569", font=("Segoe UI", 8)).pack(side="left")
+    tk.Label(form2, text="Mã Segment", bg="#f1f5f9", fg="#475569", font=("Segoe UI", 8)).pack(side="left")
     tk.Entry(form2, textvariable=addr_seg_var, width=6, relief="solid", bd=1).pack(side="left", padx=(3, 10))
 
     tk.Label(form2, text="Offset", bg="#f1f5f9", fg="#475569", font=("Segoe UI", 8)).pack(side="left")
     tk.Entry(form2, textvariable=addr_offset_var, width=9, relief="solid", bd=1).pack(side="left", padx=(3, 10))
 
-    tk.Label(form2, text="Access", bg="#f1f5f9", fg="#475569", font=("Segoe UI", 8)).pack(side="left")
+    tk.Label(form2, text="Quyền truy cập", bg="#f1f5f9", fg="#475569", font=("Segoe UI", 8)).pack(side="left")
     ttk.Combobox(
         form2, textvariable=addr_access_var, values=["R", "W", "X"],
         width=4, state="readonly"
     ).pack(side="left", padx=(3, 10))
 
     _make_btn(
-        form2, "+ Them dia chi",
+        form2, "+ Thêm địa chỉ",
         lambda: cb_add_addr(addr_seg_var.get(), addr_offset_var.get(), addr_access_var.get()) if cb_add_addr else None,
         bg="#0284c7", fg="#ffffff", border="#0284c7", bold=True
     ).pack(side="left")
 
-    # 2 nút dịch từng dòng/dịch toàn bộ
     action_row = tk.Frame(left_col, bg="#f1f5f9")
     action_row.pack(fill="x", pady=(2, 8))
     action_row.columnconfigure(0, weight=1)
@@ -199,10 +196,9 @@ def create_gui_panels(
     )
     btn_all.grid(row=0, column=1, sticky="ew", padx=(4, 0))
 
-    # --- 3. BANG KET QUA DICH DIA CHI ---
     tk.Label(
         left_col, text="3. BẢNG KẾT QUẢ DỊCH ĐỊA CHỈ",
-        bg="#f1f5f9", fg="#334155",font=("Segoe UI", 9, "bold")
+        bg="#f1f5f9", fg="#334155", font=("Segoe UI", 9, "bold")
     ).pack(anchor="w", pady=(0, 2))
 
     res_container = tk.Frame(left_col, bg="#f1f5f9")
@@ -212,9 +208,9 @@ def create_gui_panels(
 
     res_columns = ("step", "detail", "status")
     tree_res = ttk.Treeview(res_container, columns=res_columns, show="headings", height=5, style="Modern.Treeview")
-    tree_res.heading("step", text="Buoc")
-    tree_res.heading("detail", text="Noi dung xu ly")
-    tree_res.heading("status", text="Trang thai")
+    tree_res.heading("step", text="Bước")
+    tree_res.heading("detail", text="Nội dung xử lý")
+    tree_res.heading("status", text="Trạng thái")
 
     tree_res.column("step", width=85, minwidth=85, stretch=False, anchor="center")
     tree_res.column("detail", width=330, minwidth=280, stretch=False, anchor="w")
@@ -233,15 +229,14 @@ def create_gui_panels(
 
     bottom_left = tk.Frame(left_col, bg="#f1f5f9")
     bottom_left.pack(fill="x", pady=(6, 0))
-    _make_btn(bottom_left, "Buoc tiep ->", cb_next_step, bg="#ffffff", fg="#334155").pack(side="left")
+    _make_btn(bottom_left, "Bước tiếp theo →", cb_next_step, bg="#ffffff", fg="#334155").pack(side="left")
 
-    # ==================== COT PHAI (MUC 4, 5) ====================
+    # ==================== CỘT PHẢI (MỤC 4, 5) ====================
     right_col = tk.Frame(main_frame, bg="#f1f5f9")
     right_col.grid(row=0, column=1, sticky="nsew", padx=(8, 0))
 
-    # --- 4. MEMORY MAP - SO DO BO NHO ---
     tk.Label(
-        right_col, text="4. MEMORY MAP - SƠ ĐỒ BỘ NHỚ (5000 BYTE)",
+        right_col, text="4. SƠ ĐỒ BỘ NHỚ (5000 BYTE)",
         bg="#f1f5f9", fg="#334155", font=("Segoe UI", 9, "bold")
     ).pack(anchor="w", pady=(0, 3))
 
@@ -251,15 +246,14 @@ def create_gui_panels(
     )
     canvas.pack(fill="both", expand=True)
 
-    # Chu thich mau sac (Legend)
     legend_frame = tk.Frame(right_col, bg="#f1f5f9")
     legend_frame.pack(fill="x", pady=(4, 2))
     legends = [
         ("#0284c7", "R-X"),
         ("#d97706", "RW-"),
         ("#16a34a", "R--"),
-        ("#64748b", "Khac"),
-        ("#f8fafc", "Free (Trong)"),
+        ("#64748b", "Khác"),
+        ("#f8fafc", "Trống"),
     ]
     for color, text in legends:
         box = tk.Label(legend_frame, bg=color, width=2, relief="solid", bd=1)
@@ -277,9 +271,8 @@ def create_gui_panels(
     )
     lbl_map_status.pack(anchor="w", pady=(0, 6))
 
-    # --- 5. KET QUA TONG HOP (BATCH OUTPUT) ---
     tk.Label(
-        right_col, text="5. KẾT QUẢ TỔNG HỢP (BATCH OUTPUT)",
+        right_col, text="5. KẾT QUẢ TỔNG HỢP",
         bg="#f1f5f9", fg="#334155", font=("Segoe UI", 9, "bold")
     ).pack(anchor="w")
 
@@ -303,14 +296,14 @@ def create_gui_panels(
     )
     for col, title, w in [
         ("stt", "STT", 38),
-        ("seg_id", "SEG_ID", 52),
+        ("seg_id", "Mã Segment", 65),
         ("base", "BASE", 55),
         ("limit", "LIMIT", 55),
         ("offset", "OFFSET", 58),
-        ("access", "ACCESS", 52),
-        ("physical", "PHYSICAL", 68),
-        ("status", "STATUS", 130),
-        ("reason", "REASON", 340),
+        ("access", "Quyền", 52),
+        ("physical", "Địa chỉ vật lý", 78),
+        ("status", "Trạng thái", 130),
+        ("reason", "Lý do", 340),
     ]:
         tree_summary.heading(col, text=title)
         tree_summary.column(
@@ -356,17 +349,17 @@ def create_gui_panels(
 
 
 def validate_and_load_csv(filepath):
-    """Kiem tra va doc file CSV"""
+    """Kiểm tra và đọc tệp CSV mã hóa UTF-8 (có hoặc không có BOM)."""
     try:
         with open(filepath, "r", encoding="utf-8-sig", newline="") as file:
             reader = csv.reader(file)
             header = next(reader, None)
             if not header or len(header) < 3:
-                raise ValueError("File CSV không đúng định đạng cột.")
+                raise ValueError("Tệp CSV không đúng định dạng cột.")
             rows = [r for r in reader if r]
             if not rows:
-                raise ValueError("File CSV không có dữ liệu.")
+                raise ValueError("Tệp CSV không có dữ liệu.")
             return rows
     except Exception as e:
-        messagebox.showerror("Lỗi dữ liệu CSV", f"Không thể đọc file CSV!\nNguyên nhân: {str(e)}")
+        messagebox.showerror("Lỗi dữ liệu CSV", f"Không thể đọc tệp CSV!\nNguyên nhân: {str(e)}")
         return None
