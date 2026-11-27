@@ -35,6 +35,12 @@ def find_overlaps(segments):
             b = ordered[j]
             b_end = b.base + b.limit
             lo, hi = b.base, min(a_end, b_end)
+            issues.append(ValidationIssue(
+                OVERLAP,
+                (a.seg_id, b.seg_id),
+                f"Segment {a.seg_id} [{a.base}, {a_end}) chồng lấn segment {b.seg_id} "
+                f"tại vùng [{lo}, {hi})",
+            ))
             issues.append(ValidationIssue(OVERLAP, (a.seg_id, b.seg_id),
                 f"Segment {a.seg_id} [{a.base}, {a_end}) chồng lấn segment {b.seg_id} "
                 f"tại vùng [{lo}, {hi})"))
@@ -51,11 +57,14 @@ def validate_table(table, mem_size=None):
     issues = []
     usable = []
     for seg in get_segments(table):
+        perm = str(getattr(seg, "perm", "---")).strip().upper()
         perm = str(getattr(seg, "perm", "---")).strip()
         if not _PERM_RE.fullmatch(perm):
             issues.append(ValidationIssue(
                 INVALID_PERM,
                 (seg.seg_id,),
+                f"Segment {seg.seg_id} có perm '{getattr(seg, 'perm', '---')}' không hợp lệ "
+                f"(chỉ nhận R/-, W/-, X-; ví dụ R-X)",
                 f"Segment {seg.seg_id} có perm '{perm}' không hợp lệ "
                 f"(chỉ nhận chữ hoa đúng dạng R/-, W/-, X-; ví dụ R-X)",
             ))
