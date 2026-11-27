@@ -4,7 +4,6 @@ import csv
 import sys
 import tempfile
 import tkinter as tk
-import unicodedata
 from pathlib import Path
 from tkinter import filedialog, messagebox
 
@@ -20,21 +19,12 @@ from gui.gui_panels import create_gui_panels, validate_and_load_csv  # noqa: E40
 from gui.memory_map import draw_memory_map  # noqa: E402
 
 
-def to_ascii_vi(text: str) -> str:
-    """Chuyen tieng Viet co dau thanh khong dau de xuat Excel khong loi font."""
-    if not text:
-        return ""
-    text = str(text).replace("đ", "d").replace("Đ", "D")
-    nfkd = unicodedata.normalize("NFKD", text)
-    return "".join(c for c in nfkd if not unicodedata.combining(c))
-
-
 class SegmentationApp:
-    """Giao dien Tkinter hien dai (tieng Viet khong dau, du cot BASE/LIMIT)."""
+    """Giao diện Tkinter hiện đại bằng tiếng Việt có dấu."""
 
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
-        self.root.title("OS_MEM_12 - Segmentation va dia chi logic")
+        self.root.title("OS_MEM_12 - Phân đoạn và địa chỉ logic")
         self.root.geometry("1280x760")
         self.root.minsize(1024, 680)
         self.root.configure(bg="#f1f5f9")
@@ -85,32 +75,32 @@ class SegmentationApp:
     def _build_menubar(self) -> None:
         menubar = tk.Menu(self.root)
         file_menu = tk.Menu(menubar, tearoff=0)
-        file_menu.add_command(label="Mo segments.csv...", command=self.open_segments_csv)
-        file_menu.add_command(label="Mo addresses.csv...", command=self.open_addresses_csv)
-        file_menu.add_command(label="Xuat ket qua CSV...", command=self.export_trace)
+        file_menu.add_command(label="Mở segments.csv...", command=self.open_segments_csv)
+        file_menu.add_command(label="Mở addresses.csv...", command=self.open_addresses_csv)
+        file_menu.add_command(label="Xuất kết quả CSV...", command=self.export_trace)
         file_menu.add_separator()
-        file_menu.add_command(label="Thoat", command=self.root.quit)
-        menubar.add_cascade(label="Tep tin", menu=file_menu)
+        file_menu.add_command(label="Thoát", command=self.root.quit)
+        menubar.add_cascade(label="Tệp tin", menu=file_menu)
 
         action_menu = tk.Menu(menubar, tearoff=0)
-        action_menu.add_command(label="Dich dong dang chon", command=self.translate_selected)
-        action_menu.add_command(label="Dich tat ca", command=self.translate_all)
-        action_menu.add_command(label="Lam moi toan bo", command=self.reset_all)
-        menubar.add_cascade(label="Thao tac", menu=action_menu)
+        action_menu.add_command(label="Dịch dòng đang chọn", command=self.translate_selected)
+        action_menu.add_command(label="Dịch tất cả", command=self.translate_all)
+        action_menu.add_command(label="Làm mới toàn bộ", command=self.reset_all)
+        menubar.add_cascade(label="Thao tác", menu=action_menu)
 
         help_menu = tk.Menu(menubar, tearoff=0)
         help_menu.add_command(
-            label="Huong dan",
+            label="Hướng dẫn",
             command=lambda: messagebox.showinfo(
-                "Tro giup",
-                "1. Nhap hoac mo file segments.csv\n"
-                "2. Nhap hoac mo file addresses.csv\n"
-                "3. Bam 'Dich dong dang chon' hoac 'Dich tat ca'\n"
-                "4. Bam 'Xuat ket qua CSV' de luu file.",
+                "Trợ giúp",
+                "1. Nhập hoặc mở tệp segments.csv\n"
+                "2. Nhập hoặc mở tệp addresses.csv\n"
+                "3. Bấm 'Dịch dòng đang chọn' hoặc 'Dịch tất cả'\n"
+                "4. Bấm 'Xuất kết quả CSV' để lưu tệp.",
                 parent=self.root,
             ),
         )
-        menubar.add_cascade(label="Tro giup", menu=help_menu)
+        menubar.add_cascade(label="Trợ giúp", menu=help_menu)
         self.root.config(menu=menubar)
 
     def _build_top_header(self) -> None:
@@ -120,15 +110,15 @@ class SegmentationApp:
 
         tk.Label(
             header,
-            text="OS_MEM_12 - Segmentation va dia chi logic",
+            text="OS_MEM_12 - Phân đoạn và địa chỉ logic",
             bg="#0f172a",
             fg="#ffffff",
             font=("Segoe UI", 11, "bold"),
         ).pack(side="left", padx=14)
 
-        btn_reset = tk.Button(
+        tk.Button(
             header,
-            text="Lam moi toan bo",
+            text="Làm mới toàn bộ",
             command=self.reset_all,
             bg="#0284c7",
             fg="#ffffff",
@@ -139,25 +129,22 @@ class SegmentationApp:
             padx=10,
             pady=3,
             cursor="hand2",
-        )
-        btn_reset.pack(side="right", padx=14)
+        ).pack(side="right", padx=14)
 
         self.lbl_mem_info = tk.Label(
             header,
-            text=f"Bo nho vat ly: 0 - {self.segment_table.mem_size} byte",
+            text=f"Bộ nhớ vật lý: 0 - {self.segment_table.mem_size} byte",
             bg="#0f172a",
             fg="#94a3b8",
             font=("Segoe UI", 9),
         )
         self.lbl_mem_info.pack(side="right", padx=8)
 
-    # ==================== QUAN LY SEGMENT ====================
-
     def open_segments_csv(self) -> None:
         path = filedialog.askopenfilename(
             parent=self.root,
-            title="Chon segments.csv",
-            filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
+            title="Chọn segments.csv",
+            filetypes=[("Tệp CSV", "*.csv"), ("Tất cả tệp", "*.*")],
             initialdir=str(PROJECT_ROOT / "input"),
         )
         if not path:
@@ -176,13 +163,13 @@ class SegmentationApp:
                     "perm": r[3].strip().upper(),
                 })
             except (ValueError, IndexError):
-                messagebox.showerror("Loi du lieu", f"Dong segment khong hop le: {r}", parent=self.root)
+                messagebox.showerror("Lỗi dữ liệu", f"Dòng segment không hợp lệ: {r}", parent=self.root)
                 return
 
         self.segments_data = new_list
         self._sync_segments_to_controller()
         self.lbl_map_status.configure(
-            text=f"TRANG THAI: Da nap {len(self.segments_data)} Segment vao bo nho vat ly."
+            text=f"TRẠNG THÁI: Đã nạp {len(self.segments_data)} Segment vào bộ nhớ vật lý."
         )
 
     def add_or_update_segment(self, seg_id_s: str, base_s: str, limit_s: str, perm_s: str) -> None:
@@ -192,9 +179,9 @@ class SegmentationApp:
             limit = int(limit_s.strip())
             perm = perm_s.strip().upper()
             if limit <= 0 or base < 0:
-                raise ValueError("Base phai >= 0 va Limit phai > 0.")
+                raise ValueError("Base phải lớn hơn hoặc bằng 0 và Limit phải lớn hơn 0.")
         except ValueError as exc:
-            messagebox.showwarning("Du lieu khong hop le", str(exc), parent=self.root)
+            messagebox.showwarning("Dữ liệu không hợp lệ", str(exc), parent=self.root)
             return
 
         updated = False
@@ -211,13 +198,13 @@ class SegmentationApp:
         self.inputs["limit"].set("")
         self._sync_segments_to_controller()
         self.lbl_map_status.configure(
-            text=f"TRANG THAI: Da {'cap nhat' if updated else 'them'} Segment {seg_id}."
+            text=f"TRẠNG THÁI: Đã {'cập nhật' if updated else 'thêm'} Segment {seg_id}."
         )
 
     def clear_segments(self) -> None:
         self.segments_data.clear()
         self._sync_segments_to_controller()
-        self.lbl_map_status.configure(text="TRANG THAI: Da xoa toan bo Segment.")
+        self.lbl_map_status.configure(text="TRẠNG THÁI: Đã xóa toàn bộ Segment.")
 
     def _on_select_segment_row(self, _event) -> None:
         sel = self.tree_seg.selection()
@@ -231,23 +218,19 @@ class SegmentationApp:
             self.inputs["perm"].set(vals[3])
 
     def _sync_segments_to_controller(self) -> None:
-        """Nap lai du lieu Segment vao controller thong qua file CSV tam."""
+        """Nạp lại dữ liệu Segment vào controller bằng tệp CSV tạm."""
         self.controller = SegmentationController()
         self.segment_table = self.controller.segment_table
 
         if self.segments_data:
-            with tempfile.NamedTemporaryFile(
-                mode="w", suffix=".csv", delete=False, encoding="utf-8", newline=""
-            ) as tmp_s:
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False, encoding="utf-8", newline="") as tmp_s:
                 writer = csv.writer(tmp_s)
                 writer.writerow(["seg_id", "base", "limit", "perm"])
                 for r in self.segments_data:
                     writer.writerow([r["seg_id"], r["base"], r["limit"], r["perm"]])
                 tmp_seg_path = tmp_s.name
 
-            with tempfile.NamedTemporaryFile(
-                mode="w", suffix=".csv", delete=False, encoding="utf-8", newline=""
-            ) as tmp_a:
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False, encoding="utf-8", newline="") as tmp_a:
                 writer = csv.writer(tmp_a)
                 writer.writerow(["seg_id", "offset", "access"])
                 writer.writerow([0, 0, "R"])
@@ -257,7 +240,7 @@ class SegmentationApp:
                 self.controller.load_files(tmp_seg_path, tmp_addr_path)
                 self.segment_table = self.controller.segment_table
             except Exception as exc:
-                messagebox.showerror("Loi bang phan doan", to_ascii_vi(str(exc)), parent=self.root)
+                messagebox.showerror("Lỗi bảng phân đoạn", str(exc), parent=self.root)
             finally:
                 Path(tmp_seg_path).unlink(missing_ok=True)
                 Path(tmp_addr_path).unlink(missing_ok=True)
@@ -265,21 +248,15 @@ class SegmentationApp:
         for item in self.tree_seg.get_children():
             self.tree_seg.delete(item)
         for row in self.segments_data:
-            self.tree_seg.insert(
-                "",
-                "end",
-                values=(row["seg_id"], row["base"], row["limit"], row["perm"], "San sang"),
-            )
-        self.lbl_seg_count.configure(text=f"{len(self.segments_data)} SEGMENTS")
+            self.tree_seg.insert("", "end", values=(row["seg_id"], row["base"], row["limit"], row["perm"], "Sẵn sàng"))
+        self.lbl_seg_count.configure(text=f"{len(self.segments_data)} SEGMENT")
         self.redraw_memory_map()
-
-    # ==================== QUAN LY DIA CHI LOGIC ====================
 
     def open_addresses_csv(self) -> None:
         path = filedialog.askopenfilename(
             parent=self.root,
-            title="Chon addresses.csv",
-            filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
+            title="Chọn addresses.csv",
+            filetypes=[("Tệp CSV", "*.csv"), ("Tất cả tệp", "*.*")],
             initialdir=str(PROJECT_ROOT / "input"),
         )
         if not path:
@@ -288,19 +265,15 @@ class SegmentationApp:
         if not rows:
             return
 
-        new_addrs = []
-        for r in rows:
-            new_addrs.append({
-                "seg_id": self._parse_int(r[0]),
-                "offset": self._parse_int(r[1]),
-                "access": r[2].strip().upper(),
-            })
-        self.addresses_data = new_addrs
+        self.addresses_data = [
+            {"seg_id": self._parse_int(r[0]), "offset": self._parse_int(r[1]), "access": r[2].strip().upper()}
+            for r in rows
+        ]
         self._refresh_address_table()
 
     def add_address(self, seg_s: str, offset_s: str, access_s: str) -> None:
         if not seg_s.strip() or not offset_s.strip():
-            messagebox.showwarning("Thieu thong tin", "Vui long nhap Seg ID va Offset.", parent=self.root)
+            messagebox.showwarning("Thiếu thông tin", "Vui lòng nhập Segment ID và Offset.", parent=self.root)
             return
         self.addresses_data.append({
             "seg_id": self._parse_int(seg_s),
@@ -319,12 +292,8 @@ class SegmentationApp:
         for item in self.tree_addr.get_children():
             self.tree_addr.delete(item)
         for idx, row in enumerate(self.addresses_data, start=1):
-            self.tree_addr.insert(
-                "",
-                "end",
-                values=(idx, row["seg_id"], row["offset"], row["access"], "Cho dich"),
-            )
-        self.lbl_addr_count.configure(text=f"{len(self.addresses_data)} DIA CHI")
+            self.tree_addr.insert("", "end", values=(idx, row["seg_id"], row["offset"], row["access"], "Chờ dịch"))
+        self.lbl_addr_count.configure(text=f"{len(self.addresses_data)} ĐỊA CHỈ")
 
     @staticmethod
     def _parse_int(val):
@@ -334,24 +303,19 @@ class SegmentationApp:
             return str(val).strip()
 
     def _get_seg_base_limit(self, seg_id) -> tuple[str, str]:
-        """Tra cuu Base va Limit cua seg_id tu danh sach segment hien tai."""
         for s in self.segments_data:
-            if str(s["seg_id"]) == str(seg_id):
+            if str(s["seg_id"] ) == str(seg_id):
                 return str(s["base"]), str(s["limit"])
         return "-", "-"
 
-    # ==================== DICH DIA CHI ====================
-
     def translate_selected(self) -> None:
         if not self.segments_data:
-            messagebox.showwarning("Chua co Segment", "Hay them Segment hoac mo segments.csv truoc.", parent=self.root)
+            messagebox.showwarning("Chưa có Segment", "Hãy thêm Segment hoặc mở segments.csv trước.", parent=self.root)
             return
-
         sel = self.tree_addr.selection()
         if not sel:
-            messagebox.showinfo("Chua chon dong", "Hay chon 1 dong trong Bang 2 de dich.", parent=self.root)
+            messagebox.showinfo("Chưa chọn dòng", "Hãy chọn một dòng trong bảng địa chỉ.", parent=self.root)
             return
-
         idx = self.tree_addr.index(sel[0])
         addr = self.addresses_data[idx]
         res = self.controller.translate_one(addr["seg_id"], addr["offset"], addr["access"])
@@ -359,16 +323,12 @@ class SegmentationApp:
 
     def translate_all(self) -> None:
         if not self.segments_data:
-            messagebox.showwarning("Chua co Segment", "Hay them Segment hoac mo segments.csv truoc.", parent=self.root)
+            messagebox.showwarning("Chưa có Segment", "Hãy thêm Segment hoặc mở segments.csv trước.", parent=self.root)
             return
         if not self.addresses_data:
-            messagebox.showwarning("Chua co dia chi", "Hay them dia chi vao Bang 2 truoc.", parent=self.root)
+            messagebox.showwarning("Chưa có địa chỉ", "Hãy thêm địa chỉ vào bảng địa chỉ trước.", parent=self.root)
             return
-
-        results = [
-            self.controller.translate_one(a["seg_id"], a["offset"], a["access"])
-            for a in self.addresses_data
-        ]
+        results = [self.controller.translate_one(a["seg_id"], a["offset"], a["access"]) for a in self.addresses_data]
         self._set_results(results)
 
     def _set_results(self, results: list[TranslationResult]) -> None:
@@ -389,40 +349,24 @@ class SegmentationApp:
             if status == Status.OK.value:
                 ok_count += 1
             base_val, limit_val = self._get_seg_base_limit(res.seg_id)
-            reason = to_ascii_vi(res.reason) or ("Dich thanh cong" if status == Status.OK.value else "")
+            reason = res.reason or ("Dịch thành công" if status == Status.OK.value else "")
             tag = "ok" if status == Status.OK.value else "error"
-            self.tree_summary.insert(
-                "",
-                "end",
-                values=(
-                    idx,
-                    res.seg_id,
-                    base_val,
-                    limit_val,
-                    res.offset,
-                    res.access,
-                    res.physical if res.physical is not None else "-",
-                    status,
-                    reason,
-                ),
-                tags=(tag,),
-            )
+            self.tree_summary.insert("", "end", values=(
+                idx, res.seg_id, base_val, limit_val, res.offset, res.access,
+                res.physical if res.physical is not None else "-", status, reason,
+            ), tags=(tag,))
 
         if self.results:
             self.lbl_batch_status.configure(
-                text=f"Da xu ly {len(self.results)} dia chi ({ok_count} OK, {len(self.results) - ok_count} LOI)",
+                text=f"Đã xử lý {len(self.results)} địa chỉ ({ok_count} THÀNH CÔNG, {len(self.results) - ok_count} LỖI)",
                 fg="#15803d",
             )
         else:
-            self.lbl_batch_status.configure(text="Chua co ket qua", fg="#d97706")
+            self.lbl_batch_status.configure(text="Chưa có kết quả", fg="#d97704")
 
     def show_next_step(self) -> None:
         if not self.results:
-            messagebox.showinfo(
-                "Chua co ket qua",
-                "Hay bam 'Dich dong dang chon' hoac 'Dich tat ca' truoc.",
-                parent=self.root,
-            )
+            messagebox.showinfo("Chưa có kết quả", "Hãy dịch một dòng hoặc dịch tất cả trước.", parent=self.root)
             return
 
         current = self.results[self.current_result_index]
@@ -432,7 +376,7 @@ class SegmentationApp:
             self.current_result_index += 1
             self.visible_step_count = 1
         else:
-            messagebox.showinfo("Hoan tat", "Da xem het cac buoc dich.", parent=self.root)
+            messagebox.showinfo("Hoàn tất", "Đã xem hết các bước dịch.", parent=self.root)
             return
         self._render_current_result()
 
@@ -443,35 +387,21 @@ class SegmentationApp:
 
         for idx, step in enumerate(result.steps[: self.visible_step_count], start=1):
             tag = "ok" if step.ok else "error"
-            self.tree_res.insert(
-                "",
-                "end",
-                values=(idx, to_ascii_vi(step.description), "Hop le" if step.ok else "Loi"),
-                tags=(tag,),
-            )
+            self.tree_res.insert("", "end", values=(idx, step.description, "Hợp lệ" if step.ok else "Lỗi"), tags=(tag,))
 
         status = result.status.value if hasattr(result.status, "value") else str(result.status)
-        reason_clean = to_ascii_vi(result.reason) or "Dich thanh cong"
+        reason_clean = result.reason or "Dịch thành công"
 
         if self.visible_step_count >= len(result.steps):
             tag = "ok" if status == Status.OK.value else "error"
-            self.tree_res.insert(
-                "",
-                "end",
-                values=("KET LUAN", reason_clean, status),
-                tags=(tag,),
-            )
+            self.tree_res.insert("", "end", values=("KẾT LUẬN", reason_clean, status), tags=(tag,))
 
         if result.status == Status.OK:
             self.redraw_memory_map(highlight_addr=result.physical)
-            self.lbl_map_status.configure(
-                text=f"TRANG THAI: Dich thanh cong -> Dia chi vat ly = {result.physical}"
-            )
+            self.lbl_map_status.configure(text=f"TRẠNG THÁI: Dịch thành công → Địa chỉ vật lý = {result.physical}")
         else:
             self.redraw_memory_map(fault_msg=reason_clean)
-            self.lbl_map_status.configure(
-                text=f"TRANG THAI: {status} - {reason_clean}"
-            )
+            self.lbl_map_status.configure(text=f"TRẠNG THÁI: {status} - {reason_clean}")
 
     def redraw_memory_map(self, highlight_addr=None, fault_msg=None) -> None:
         if not hasattr(self, "canvas"):
@@ -497,53 +427,46 @@ class SegmentationApp:
         self._refresh_summary_table()
         for item in self.tree_res.get_children():
             self.tree_res.delete(item)
-        self.lbl_map_status.configure(text="TRANG THAI: Da lam moi toan bo.")
+        self.lbl_map_status.configure(text="TRẠNG THÁI: Đã làm mới toàn bộ.")
 
     def export_trace(self) -> None:
-        """Xuat ket qua ra file CSV tieng Viet khong dau (mo bang Excel khong loi font)."""
+        """Xuất CSV UTF-8 có BOM để Excel hiển thị đúng tiếng Việt."""
         if not self.results:
-            messagebox.showinfo("Chua co ket qua", "Chua co ket qua nao de xuat.", parent=self.root)
+            messagebox.showinfo("Chưa có kết quả", "Chưa có kết quả nào để xuất.", parent=self.root)
             return
 
         default_path = PROJECT_ROOT / "output" / "trace.csv"
         default_path.parent.mkdir(parents=True, exist_ok=True)
         selected = filedialog.asksaveasfilename(
             parent=self.root,
-            title="Xuat ket qua CSV",
+            title="Xuất kết quả CSV",
             initialdir=str(default_path.parent),
             initialfile=default_path.name,
             defaultextension=".csv",
-            filetypes=[("CSV files", "*.csv")],
+            filetypes=[("Tệp CSV", "*.csv")],
         )
         if not selected:
             return
 
         try:
-            with open(selected, "w", encoding="utf-8", newline="") as f:
+            with open(selected, "w", encoding="utf-8-sig", newline="") as f:
                 writer = csv.writer(f)
-                writer.writerow(["STT", "SEG_ID", "BASE", "LIMIT", "OFFSET", "ACCESS", "PHYSICAL", "STATUS", "REASON"])
+                writer.writerow(["STT", "SEG_ID", "BASE", "LIMIT", "OFFSET", "ACCESS", "PHYSICAL", "STATUS", "LÝ DO"])
                 for idx, res in enumerate(self.results, start=1):
                     status = res.status.value if hasattr(res.status, "value") else str(res.status)
                     base_val, limit_val = self._get_seg_base_limit(res.seg_id)
-                    reason = to_ascii_vi(res.reason) or ("Dich thanh cong" if status == Status.OK.value else "")
+                    reason = res.reason or ("Dịch thành công" if status == Status.OK.value else "")
                     writer.writerow([
-                        idx,
-                        res.seg_id,
-                        base_val,
-                        limit_val,
-                        res.offset,
-                        res.access,
-                        res.physical if res.physical is not None else "",
-                        status,
-                        reason,
+                        idx, res.seg_id, base_val, limit_val, res.offset, res.access,
+                        res.physical if res.physical is not None else "", status, reason,
                     ])
         except OSError as exc:
-            messagebox.showerror("Khong xuat duoc CSV", str(exc), parent=self.root)
+            messagebox.showerror("Không xuất được CSV", str(exc), parent=self.root)
             return
 
         messagebox.showinfo(
-            "Da xuat ket qua",
-            f"Da luu {len(self.results)} dong ket qua (khong dau) tai:\n{selected}",
+            "Đã xuất kết quả",
+            f"Đã lưu {len(self.results)} dòng kết quả bằng UTF-8 tại:\n{selected}",
             parent=self.root,
         )
 
